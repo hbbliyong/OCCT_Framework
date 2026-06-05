@@ -1,0 +1,36 @@
+cmake_minimum_required(VERSION 3.28)
+project(VtkQtMinimal)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_C_STANDARD 17)
+set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+
+# 2. 自动调用MOC、UIC等Qt工具
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(QTROOT_DIR C:/Qt/6.11.0)
+set(QT6_DIR ${QTROOT_DIR}/msvc2022_64/lib/cmake/Qt6)
+message(${QT6_DIR})
+# Qtset(Qt6_DIR ${QTROOT_DIR}/msvc2022_64/lib/cmake/Qt6)
+find_package(Qt6 COMPONENTS 
+Core 
+Gui 
+Widgets 
+OpenGLWidgets
+Xml
+REQUIRED)
+
+set(VTK_FOLDER "E:/002GitCode/VTK/build")
+set(VTK_DIR "${VTK_FOLDER}/lib/cmake/vtk-9.6")
+set(VTK_BIN_DIR "${VTK_FOLDER}/bin/Debug")
+# ---------- 找 VTK ----------
+find_package(VTK REQUIRED)
+
+# 替换为你的实际安装路径（必须指向 /cmake 子目录！）
+set(OCCT_INSTALL_PREFIX "E:/002GitCode/occt_sdk/installed") 
+
+find_package(OpenCASCADE REQUIRED
+  PATHS "${OCCT_INSTALL_PREFIX}/cmake"  # 必须包含此路径
+  NO_DEFAULT_PATH  # 禁用系统默认路径搜索，避免冲突
+)
+add_subdirectory(source)
