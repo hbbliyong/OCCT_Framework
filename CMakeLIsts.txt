@@ -1,9 +1,19 @@
 cmake_minimum_required(VERSION 3.28)
-project(VtkQtMinimal)
+project(OCCT_QT_Framework)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 17)
 set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin/Debug")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin/Release")
+# 设置所有可执行文件输出到 ${CMAKE_BINARY_DIR}/bin
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+# 设置所有库文件（静态库和共享库）输出到 ${CMAKE_BINARY_DIR}/lib
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 # 2. 自动调用MOC、UIC等Qt工具
 set(CMAKE_AUTOMOC ON)
@@ -33,4 +43,5 @@ find_package(OpenCASCADE REQUIRED
   PATHS "${OCCT_INSTALL_PREFIX}/cmake"  # 必须包含此路径
   NO_DEFAULT_PATH  # 禁用系统默认路径搜索，避免冲突
 )
-add_subdirectory(source)
+add_subdirectory(source/framework)
+add_subdirectory(source/samples)

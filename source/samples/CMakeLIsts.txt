@@ -1,0 +1,55 @@
+set(LIBARAY_NAME Sample_App)
+include_directories(
+    ${VTK_INCLUDE_DIRS}
+)
+
+# 1. 先递归收集所有源文件（.c/.cpp 等）
+file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS 
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*"
+)
+file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS 
+    "${CMAKE_CURRENT_SOURCE_DIR}/includes/*.h*"
+)
+# 2. 按原始目录结构分组（VS 中显示为 src/xxx/xxx.cpp）
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" 
+            PREFIX "Source Files" 
+            FILES ${SOURCE_FILES})
+
+# 3. 头文件同理
+
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/includes" 
+            PREFIX "Header Files" 
+            FILES ${HEADER_FILES})
+
+add_executable(${LIBARAY_NAME}
+    ${SOURCE_FILES}
+    ${HEADER_FILES}
+)
+target_include_directories(${LIBARAY_NAME} PRIVATE includes)
+target_link_libraries(${LIBARAY_NAME}
+    Qt6::Widgets
+    ${VTK_LIBRARIES}
+    ${OpenCASCADE_LIBRARIES}
+    OCCT_Framework
+)
+
+# target_link_libraries(${LIBARAY_NAME} PRIVATE ${OpenCASCADE_LIBRARIES})
+
+# # 仅链接核心模块（最小依赖）
+# target_link_libraries(${LIBARAY_NAME} PRIVATE
+#   OCCT::TKernel    # 基础内核
+#   OCCT::TKMath     # 数学工具
+#   OCCT::TKBRep     # 拓扑数据
+#   OCCT::TKGeomBase # 几何算法
+#     OCCT::TKService  # 渲染服务
+#   OCCT::TKV3d      # 3D 视图
+# )
+# 自动处理 Qt moc/uic/rcc
+set_target_properties(${LIBARAY_NAME} PROPERTIES AUTOMOC ON)
+if(MSVC)
+    # 设置调试环境，将VTK的bin目录添加到PATH
+    set_target_properties(${LIBARAY_NAME} PROPERTIES
+        VS_DEBUGGER_ENVIRONMENT "PATH=${VTK_BIN_DIR};${OCCT_INSTALL_PREFIX}/win64/vc14/bind;%PATH%"
+    )
+endif()
+
