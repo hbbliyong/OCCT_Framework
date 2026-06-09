@@ -3,24 +3,20 @@
 #include "core/CoreMacro.hpp"
 #include "common/Singleton.h"
 #include "tool/Tool.h"
+#include "common/types.h"
 #include <memory>
 
-namespace SongYun {
-
-class ToolManager : public Singleton<ToolManager>
+namespace SongYun
 {
-public:
-    SONGYUN_API void setActiveTool(std::shared_ptr<Tool> tool);
-    SONGYUN_API std::shared_ptr<Tool> activeTool() const;
+    class ToolManager : public Singleton<ToolManager>
+    {
+    public:
+        void SetCurrent(Ref<Tool> tool);
 
-    SONGYUN_API void clearActiveTool();
+        Tool *Current() const;
 
-    SONGYUN_API void mouseMove(void* event);
-    SONGYUN_API void mousePress(void* event);
-    SONGYUN_API void mouseRelease(void* event);
-
-private:
-    std::shared_ptr<Tool> activeTool_;
-};
+    private:
+        Ref<Tool> m_current;
+    };
 
 } // namespace SongYun

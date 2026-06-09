@@ -1,17 +1,12 @@
-#include "command/commands/CreatePolylineCommand.h"
+#include "cmds/CreatePolylineCommand.h"
 
 #include <AIS_Shape.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <TopoDS_Shape.hxx>
-namespace SongYun
+namespace Samples
 {
-	CreatePolylineCommand::CreatePolylineCommand(const Handle(AIS_InteractiveContext)& context,
-		std::function<void(const QString&)> statusCallback)
-		: myContext(context), myStatusCallback(std::move(statusCallback))
-	{}
-
 	bool CreatePolylineCommand::execute()
 	{
 		if (myExecuted)

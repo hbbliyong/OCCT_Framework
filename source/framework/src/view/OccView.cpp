@@ -1,4 +1,5 @@
 #include "view/OccView.h"
+#include "tool/ToolManager.h"
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <AIS_Shape.hxx>
 #include <Aspect_DisplayConnection.hxx>
@@ -20,7 +21,7 @@
 #include <QMouseEvent>
 namespace SongYun
 {
-	OccView::OccView(QWidget* parent) : QOpenGLWidget(parent)
+	OccView::OccView(QWidget *parent) : QOpenGLWidget(parent)
 	{
 		setFocusPolicy(Qt::StrongFocus);
 		setMouseTracking(true);
@@ -118,8 +119,13 @@ namespace SongYun
 		m_view->FitAll();							// 自动缩放到窗口
 	}
 
-	void OccView::mousePressEvent(QMouseEvent* event)
+	void OccView::mousePressEvent(QMouseEvent *event)
 	{
+		if (auto *tool =
+				ToolManager::Instance().Current())
+		{
+			tool->MousePress(event);
+		}
 		if (event->button() != Qt::LeftButton)
 			return;
 
@@ -138,12 +144,28 @@ namespace SongYun
 		}
 	}
 
-	void OccView::mouseMoveEvent(QMouseEvent* event)
-	{}
+	void OccView::mouseMoveEvent(QMouseEvent *event)
+	{
+		if (auto *tool =
+				ToolManager::Instance().Current())
+		{
+			tool->MouseMove(event);
+		}
+	}
 
-	void OccView::wheelEvent(QWheelEvent* event)
-	{}
-	void OccView::showEvent(QShowEvent* event)
+	void OccView::wheelEvent(QWheelEvent *event)
+	{
+	}
+	void OccView::keyPressEvent(
+		QKeyEvent *e)
+	{
+		if (auto *tool =
+				ToolManager::Instance().Current())
+		{
+			tool->KeyPress(e);
+		}
+	}
+	void OccView::showEvent(QShowEvent *event)
 	{
 		QOpenGLWidget::showEvent(event);
 

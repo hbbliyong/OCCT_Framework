@@ -1,15 +1,11 @@
-#include "command/commands/CreateCylinderCommand.h"
+#include "cmds/CreateCylinderCommand.h"
 
 #include <AIS_Shape.hxx>
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <gp_Ax2.hxx>
 #include <gp_Dir.hxx>
 #include <TopoDS_Shape.hxx>
-namespace SongYun {
-	CreateCylinderCommand::CreateCylinderCommand(const Handle(AIS_InteractiveContext)& context,
-		std::function<void(const QString&)> statusCallback)
-		: myContext(context), myStatusCallback(std::move(statusCallback))
-	{}
+namespace Samples {
 
 	bool CreateCylinderCommand::execute()
 	{

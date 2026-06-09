@@ -11,7 +11,7 @@ namespace SongYun {
 		creators_[name] = creator;
 	}
 
-	std::shared_ptr<Command> CommandFactory::create(const QString& name, const std::map<QString, std::any>& params) const
+	std::shared_ptr<ICommand> CommandFactory::create(const QString& name, const std::map<QString, std::any>& params) const
 	{
 		auto it = creators_.find(name);
 		if (it != creators_.end())
