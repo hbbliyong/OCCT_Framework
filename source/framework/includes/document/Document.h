@@ -4,11 +4,8 @@
 #include <string>
 #include <vector>
 #include <memory>
-
+#include <TopoDS_Shape.hxx>
 namespace SongYun {
-
-class DocumentObject;
-
 class Document
 {
 public:
@@ -21,12 +18,18 @@ public:
     SONGYUN_API virtual bool load(const std::string& path);
     SONGYUN_API virtual bool save(const std::string& path) const;
 
-    SONGYUN_API void addObject(const std::shared_ptr<DocumentObject>& object);
-    SONGYUN_API const std::vector<std::shared_ptr<DocumentObject>>& objects() const noexcept;
-
+    SONGYUN_API int addObject(const TopoDS_Shape& object);
+    SONGYUN_API  int createAssembly(const std::vector<int>& children);
+    SONGYUN_API void removeObject(const int id);
+    SONGYUN_API const std::vector<TopoDS_Shape>& objects() const noexcept;
+private:
+    bool createNew();
 private:
     std::string name_;
-    std::vector<std::shared_ptr<DocumentObject>> objects_;
+    std::vector<std::shared_ptr<TopoDS_Shape>> objects_;
+
+    struct Impl;
+    std::unique_ptr<Impl> m_impl;
 };
 
 } // namespace SongYun
