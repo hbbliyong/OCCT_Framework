@@ -1,8 +1,9 @@
 #include "ui/MainWindow/MainWindow.h"
 #include "ui/VtkDialog/VtkDialog.h"
 #include "view/OccView.h"
+#include "app/App.h"
+#include "selection/SelectionManager.h"
 #include "command/CommandRegistry.h"
-#include "command/CommandFactory.h"
 #include "command/InteractiveCommand.h"
 #include "selection/PickService.h"
 
@@ -76,10 +77,11 @@ namespace SongYun {
 		myContext = new AIS_InteractiveContext(myViewer);
 		myContext->SetDisplayMode(AIS_Shaded, Standard_True); // 着色模式
 		myContext->SetAutomaticHilight(Standard_True);		  // 启用自动高亮
-		view_occt = new View(myContext, true, this);
+		view_occt = new OccView(this);
 		view_occt->installEventFilter(this);
+		App::Instance().commandContext().selectionManager()->SetView(view_occt);
 		setCentralWidget(view_occt);
-		PickService::instance().initialize(view_occt, myContext);
+		//PickService::instance().initialize(view_occt, myContext);
 	}
 
 	void MainWindow::initMenuBar()
@@ -99,30 +101,20 @@ namespace SongYun {
 		QAction* cylinderAction = fileMenu->addAction("Create Cylinder");
 		connect(cylinderAction, &QAction::triggered, this, [this](bool checked = false)
 			{
-				std::map<QString, std::any> params;
-				params["context"] = myContext;
-				params["statusCallback"] = std::function<void(const QString&)>([this](const QString& message) { updateStatus(message); });
-				auto command = CommandFactory::instance().create("CreateCylinder", params);
-				if (command)
-				{
-					setCurrentCommand(command);
-				} });
+				CommandManager::Instance().execute("Samples.CreateCylinder");
+			}
+		);
 
-				QAction* polylineAction = fileMenu->addAction("Create Polyline");
-				connect(polylineAction, &QAction::triggered, this, [this](bool checked = false)
-					{
-						std::map<QString, std::any> params;
-						params["context"] = myContext;
-						params["statusCallback"] = std::function<void(const QString&)>([this](const QString& message) { updateStatus(message); });
-						auto command = CommandFactory::instance().create("CreatePolyline", params);
-						if (command)
-						{
-							setCurrentCommand(command);
-						} });
+		QAction* polylineAction = fileMenu->addAction("Create Polyline");
+		connect(polylineAction, &QAction::triggered, this, [this](bool checked = false)
+			{
+				CommandManager::Instance().execute("Samples.CreatePolyline");
+			}
+		);
 
-						QAction* exitAction = fileMenu->addAction("Create");
-						connect(exitAction, &QAction::triggered, this, [this](bool checked = false)
-							{ runModelData(); });
+		QAction* exitAction = fileMenu->addAction("Create");
+		connect(exitAction, &QAction::triggered, this, [this](bool checked = false)
+			{ runModelData(); });
 	}
 
 	void MainWindow::initStatusBar()
@@ -147,7 +139,7 @@ namespace SongYun {
 
 	void MainWindow::initConnections()
 	{
-		connect(view_occt, &View::selectionChanged, this, &MainWindow::processSelectChanged);
+		//connect(view_occt, &OccView::selectionChanged, this, &MainWindow::processSelectChanged);
 	}
 
 	void MainWindow::initToolBar()

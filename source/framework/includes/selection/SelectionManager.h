@@ -19,7 +19,7 @@ namespace SongYun
 		PickingObject
 	};
 
-	class SelectionManager : public Singleton<SelectionManager>
+	class SelectionManager
 	{
 	public:
 		SONGYUN_API void setFilter(std::shared_ptr<SelectionFilter> filter);
@@ -33,7 +33,7 @@ namespace SongYun
 			m_view = view;
 		}
 
-		std::optional<gp_Pnt>
+		SONGYUN_API std::optional<gp_Pnt>
 			PickPoint(
 				QString prompt);
 

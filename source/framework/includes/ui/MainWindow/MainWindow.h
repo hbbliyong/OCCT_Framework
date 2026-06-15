@@ -9,7 +9,7 @@
 #include <V3d_Viewer.hxx>
 #include "command/CommandManager.h"
 #include "command/ICommand.h"
-#include "view/View.h"
+#include "view/occView.h"
 
 class QMenuBar;
 class QToolBar;
@@ -64,7 +64,7 @@ namespace SongYun {
 		std::vector<int> myClickPos;
 		std::vector<Handle(AIS_InteractiveObject)> objs;
 
-		View* view_occt;
+		OccView* view_occt;
 		CommandManager myCommandManager;
 		std::shared_ptr<ICommand> myCurrentCommand;
 

@@ -4,7 +4,11 @@
 #include <iostream>
 
 namespace SongYun {
-
+	CommandRegistry& CommandRegistry::Instance()
+	{
+		static CommandRegistry instance;
+		return instance;
+	}
 	void CommandRegistry::registerDescriptor(const char* id, std::function<ICommand* ()> factory) {
 		// 关键：使用DLL内部的锁（避免跨CRT互斥量问题）
 		std::lock_guard<std::mutex> lock(m_mutex);

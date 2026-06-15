@@ -37,6 +37,6 @@ namespace Samples {
 		bool myExecuted = false;
 	};
 	// 自动注册到系统（无需修改initPartModule）
-	REGISTER_COMMAND(CreatePolylineCommand, "Samples.CreatePolyline");
+
 } // namespace Samples
 	// \source\framework\includes\command\commands\CreatePolylineCommand.cpp

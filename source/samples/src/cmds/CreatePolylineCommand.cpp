@@ -5,10 +5,15 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <TopoDS_Shape.hxx>
+#include <gp_Pnt.hxx>
+#include "app/App.h"
+#include "selection/SelectionManager.h"
 namespace Samples
 {
 	bool CreatePolylineCommand::execute()
 	{
+
+		context().selectionManager().PickPoint("Select a point on the screen:");
 		if (myExecuted)
 		{
 			if (!myPolyline.IsNull())
@@ -107,4 +112,6 @@ namespace Samples
 		myMarkers.clear();
 		myContext->UpdateCurrentViewer();
 	}
+
+	REGISTER_COMMAND(CreatePolylineCommand, "Samples.CreatePolyline");
 }

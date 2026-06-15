@@ -11,23 +11,23 @@ namespace SongYun {
 	std::shared_ptr<Document> DocumentManager::createDocument(const std::string& name)
 	{
 		auto document = std::make_shared<Document>(name);
-		documents_.push_back(document);
-		activeDocument_ = document;
+		m_documents.push_back(document);
+		m_activeDocument = document;
 		return document;
 	}
 
 	std::shared_ptr<Document> DocumentManager::activeDocument() const
 	{
-		return activeDocument_;
+		return m_activeDocument;
 	}
 
 	void DocumentManager::setActiveDocument(const std::shared_ptr<Document>& document)
 	{
-		activeDocument_ = document;
+		m_activeDocument = document;
 	}
 
 	const std::vector<std::shared_ptr<Document>>& DocumentManager::documents() const noexcept
 	{
-		return documents_;
+		return m_documents;
 	}
 }

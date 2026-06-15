@@ -4,15 +4,14 @@
 #include "command/ICommand.h"
 #include <memory>
 #include <vector>
-
+#include "common/Singleton.h"
 namespace SongYun {
 
-	class CommandManager
+	class CommandManager : public Singleton<CommandManager>
 	{
 	public:
-		SONGYUN_API CommandManager() = default;
-
 		SONGYUN_API void execute(const std::shared_ptr<ICommand>& command);
+		SONGYUN_API void execute(const std::string& commandId);
 		SONGYUN_API void undo();
 		SONGYUN_API void redo();
 		SONGYUN_API void clear();

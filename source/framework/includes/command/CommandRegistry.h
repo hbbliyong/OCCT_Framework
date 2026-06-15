@@ -15,7 +15,7 @@ namespace SongYun
 	class  CommandRegistry :public Singleton<CommandRegistry>
 	{
 	public:
-
+		SONGYUN_API static CommandRegistry& Instance();
 		// 注册命令描述符（仅存元信息，不创建实例）
 		SONGYUN_API void registerDescriptor(const char* id, std::function<ICommand* ()> factory);
 
@@ -38,6 +38,12 @@ namespace SongYun
 				std::unique_ptr<std::mutex> mtx)
 				: factory(std::move(f)), instance(std::move(inst)), mutex(std::move(mtx)) {}
 		};
+
+		CommandRegistry() = default;
+		~CommandRegistry() = default;
+		CommandRegistry(const CommandRegistry&) = delete;
+		CommandRegistry& operator=(const CommandRegistry&) = delete;
+	private:
 		std::unordered_map<std::string, CommandDescriptor> m_descriptors;
 		std::mutex m_mutex;
 	};

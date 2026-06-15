@@ -9,6 +9,7 @@
 #include <QString>
 #include <functional>
 #include "command/InteractiveCommand.h"
+
 namespace Samples
 {
 
@@ -31,6 +32,5 @@ namespace Samples
 		gp_Pnt myPickedPoint;
 		bool myExecuted = false;
 	};
-	// 自动注册到系统（无需修改initPartModule）
-	REGISTER_COMMAND(CreateCylinderCommand, "Samples.CreateCylinder");
+
 } // namespace Samples

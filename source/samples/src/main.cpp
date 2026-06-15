@@ -1,6 +1,7 @@
 #include "app/App.h"
 #include "ui/MainWindow/MainWindow.h"
-
+#include "document/DocumentManager.h"
+#include "QApplication"
 int main(int argc, char* argv[])
 {
 	QSurfaceFormat fmt = QSurfaceFormat::defaultFormat();
@@ -9,6 +10,8 @@ int main(int argc, char* argv[])
 	QSurfaceFormat::setDefaultFormat(fmt);
 	QApplication app(argc, argv);
 	SongYun::App::Instance().initialize(app, "OCCT Qt Framework");
+
+	SongYun::DocumentManager::Instance().createDocument("First Document");
 
 	// 使用 MainWindow 单例
 	auto& mainWindow = SongYun::MainWindow::Instance();

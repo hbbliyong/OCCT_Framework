@@ -19,8 +19,8 @@ public:
 
 private:
     DocumentManager();
-    std::vector<std::shared_ptr<Document>> documents_;
-    std::shared_ptr<Document> activeDocument_;
+    std::vector<std::shared_ptr<Document>> m_documents;
+    std::shared_ptr<Document> m_activeDocument;
 };
 
 } // namespace SongYun

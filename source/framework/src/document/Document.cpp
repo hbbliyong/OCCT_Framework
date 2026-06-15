@@ -18,10 +18,13 @@ namespace SongYun {
 	};
 
 	Document::Document(const std::string& name)
-		: name_(name),m_impl(std::make_unique<Impl>())
+		: name_(name), m_impl(std::make_unique<Impl>())
 	{
 		createNew();
 	}
+
+	Document::~Document()
+	{}
 
 	const std::string& Document::name() const noexcept
 	{
@@ -59,35 +62,35 @@ namespace SongYun {
 
 		int id = m_impl->nextId++;
 		m_impl->idToLabel[id] = label;
-		
+
 		return id;
 	}
 
-	 int Document::createAssembly(const std::vector<int>& children)
+	int Document::createAssembly(const std::vector<int>& children)
 	{
-		 TDF_Label assembly = m_impl->shapeTool->NewShape();
+		TDF_Label assembly = m_impl->shapeTool->NewShape();
 
-		 for (int cid : children)
-		 {
-			 auto it = m_impl->idToLabel.find(cid);
-			 if (it != m_impl->idToLabel.end())
-			 {
-				 m_impl->shapeTool->AddComponent(assembly, it->second, TopLoc_Location());
-			 }
-		 }
+		for (int cid : children)
+		{
+			auto it = m_impl->idToLabel.find(cid);
+			if (it != m_impl->idToLabel.end())
+			{
+				m_impl->shapeTool->AddComponent(assembly, it->second, TopLoc_Location());
+			}
+		}
 
-		 int id = m_impl->nextId++;
-		 m_impl->idToLabel[id] = assembly;
-		 return id;
+		int id = m_impl->nextId++;
+		m_impl->idToLabel[id] = assembly;
+		return id;
 	}
 
-	 void Document::removeObject(const int id)
+	void Document::removeObject(const int id)
 	{
-		 auto it = m_impl->idToLabel.find(id);
-		 if (it == m_impl->idToLabel.end()) return;
+		auto it = m_impl->idToLabel.find(id);
+		if (it == m_impl->idToLabel.end()) return;
 
-		 m_impl->shapeTool->RemoveShape(it->second);
-		 m_impl->idToLabel.erase(it);
+		m_impl->shapeTool->RemoveShape(it->second);
+		m_impl->idToLabel.erase(it);
 	}
 
 	const std::vector<TopoDS_Shape>& Document::objects() const noexcept

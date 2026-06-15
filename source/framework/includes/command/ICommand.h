@@ -6,7 +6,7 @@
 #include <functional>
 
 namespace SongYun {
-
+	class CommandContext;
 	class ICommand
 	{
 	public:
@@ -16,6 +16,19 @@ namespace SongYun {
 		virtual SONGYUN_API bool undo() { return false; }
 		virtual SONGYUN_API bool redo() { return false; }
 		virtual SONGYUN_API QString name() const = 0;
+		void setContext(CommandContext* ctx)
+		{
+			m_context = ctx;
+		}
+	protected:
+
+		CommandContext& context() const
+		{
+			return *m_context;
+		}
+	private:
+
+		CommandContext* m_context = nullptr;
 	};
 
 } // namespace SongYun

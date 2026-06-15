@@ -52,4 +52,6 @@ namespace Samples {
 		if (myStatusCallback)
 			myStatusCallback("Cylinder created.");
 	}
+	// 自动注册到系统（无需修改initPartModule）
+	REGISTER_COMMAND(CreateCylinderCommand, "Samples.CreateCylinder");
 }
