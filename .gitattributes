@@ -1,0 +1,17 @@
+.gitattributes eol=lf
+.gitignore  eol=lf
+*.txt       eol=lf
+*.htm       eol=lf
+*.html      eol=lf
+*.h         eol=lf
+# C++
+*.c         eol=lf
+*.inl       eol=lf
+*.cpp       eol=lf
+*.cxx       eol=lf
+*.gxx       eol=lf
+*.hxx       eol=lf
+
+# CMake
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
