@@ -6,8 +6,30 @@ static QCursor* panCursor = nullptr;
 static QCursor* globPanCursor = nullptr;
 static QCursor* zoomCursor = nullptr;
 static QCursor* rotCursor = nullptr;
+
+#include "tool/ToolManager.h"
+#include <BRepPrimAPI_MakeBox.hxx>
+#include <AIS_Shape.hxx>
+#include <Aspect_DisplayConnection.hxx>
+#include <WNT_Window.hxx>
+#include <Geom_CylindricalSurface.hxx>
+#include <gp_Ax2.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Dir.hxx>
+#include <Geom_TrimmedCurve.hxx>
+#include <Geom_Circle.hxx>
+#include <GC_MakeArcOfCircle.hxx>
+#include <Aspect_NeutralWindow.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
+
+#include <V3d_Viewer.hxx>
+#include <QSurfaceFormat>
+#include <QOpenGLContext>
+#include <QMouseEvent>
+
 namespace SongYun {
-	View::View(const Handle(AIS_InteractiveContext)& theContext, bool theIs3dView, QWidget* theParent) : QWidget(theParent),
+	View::View(bool theIs3dView, QWidget* theParent) : QOpenGLWidget(theParent),
 		myIs3dView(theIs3dView),
 		dpr(devicePixelRatioF()),
 		myIsRaytracing(false),
@@ -15,45 +37,109 @@ namespace SongYun {
 		myIsReflectionsEnabled(false),
 		myIsAntialiasingEnabled(false)
 	{
-		myContext = theContext;
 		myCurrentMode = CurrentAction3d_Nothing;
-
-		setAttribute(Qt::WA_PaintOnScreen);
-		setAttribute(Qt::WA_NoSystemBackground);
-		setBackgroundRole(QPalette::NoRole);
 		setFocusPolicy(Qt::StrongFocus);
 		setMouseTracking(true);
-		init();
+
+		setBackgroundRole(QPalette::NoRole);
+
+		setAttribute(Qt::WA_DontCreateNativeAncestors);
+		setFocusPolicy(Qt::StrongFocus);
+		setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
+
+		// ❗ 防止 Qt 重绘干扰 OCCT
+		setAttribute(Qt::WA_OpaquePaintEvent);
 	}
 
-	void View::init()
+	void View::initializeGL()
 	{
-		if (myV3dView.IsNull())
+		// 1. 配置OpenGL上下文（必须≥3.3 Core Profile）
+		// 1. 检查上下文是否激活
+		if (!context()->isValid())
 		{
-			myV3dView = myContext->CurrentViewer()->CreateView();
+			qFatal("OpenGL context creation FAILED!"); // 立即终止，避免后续崩溃
 		}
 
-		Handle(OcctWindow) hWnd = new OcctWindow(this);
-		// 设置视图窗口
-		myV3dView->SetWindow(hWnd);
-		if (!hWnd->IsMapped())
+		// 2. 打印实际支持的 OpenGL 版本
+		qDebug() << "GL Version:" << reinterpret_cast<const char*>(glGetString(GL_VERSION));
+		qDebug() << "GL Renderer:" << reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+		qDebug() << "GL Extensions:" << reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
+		qDebug() << QOpenGLContext::currentContext()->format();
+		qDebug() << "ctx:" << QOpenGLContext::currentContext();
+		qDebug() << "valid:" << QOpenGLContext::currentContext()->isValid();
+		// 2. 创建OCCT图形驱动
+		Handle(OpenGl_GraphicDriver) driver = new OpenGl_GraphicDriver(
+			new Aspect_DisplayConnection());
+
+		// 3. 初始化Viewer和View
+		m_viewer = new V3d_Viewer(driver);
+		m_viewer->SetDefaultLights();
+		m_viewer->SetLightOn();
+		m_view = m_viewer->CreateView();
+
+		// 4. 创建交互式上下文（AIS核心）
+		m_context = new AIS_InteractiveContext(m_viewer);
+		m_context->SetDisplayMode(AIS_Shaded, Standard_True); // 着色模式
+		m_context->SetAutomaticHilight(Standard_True);		  // 启用自动高亮
+
+		qDebug() << "OCCT core initialized (no window yet)";
+		m_initialized = true;
+	}
+	void View::resizeGL(int w, int h)
+	{
+		if (m_view.IsNull()) return;
+
+		m_view->MustBeResized();
+		// ⭐ 强制更新 OpenGL viewport
+		m_view->InvalidateImmediate();
+		//	m_view->Redraw();
+	}
+
+	void View::paintGL()
+	{
+		if (!m_initialized)
+			return;
+
+		bindWindowIfNeeded();
+
+		if (m_view.IsNull())
+			return;
+
+		try
 		{
-			hWnd->Map();
+			m_view->MustBeResized();
+			m_view->Redraw();
 		}
+		catch (...)
+		{
+			qDebug() << "OCCT render exception, recovering...";
+			m_windowBound = false;
+		}
+
+	}
+	void View::init()
+	{
+		if (m_view.IsNull())
+		{
+			m_view = m_context->CurrentViewer()->CreateView();
+		}
+
 
 		if (myIs3dView)
 		{
 			Quantity_Color color1(Quantity_NOC_BLACK);
 			Quantity_Color color2(Quantity_NOC_GRAY);
-			myV3dView->SetBgGradientColors(color1, color2, Aspect_GFM_VER);
+			m_view->SetBgGradientColors(color1, color2, Aspect_GFM_VER);
 		}
 		else
 		{
-			myV3dView->SetBackgroundColor(Quantity_TOC_RGB, 33.0 / 255.0, 40.0 / 255.0, 48.0 / 255.0);
-			myV3dView->SetProj(V3d_Zpos);
+			m_view->SetBackgroundColor(Quantity_TOC_RGB, 33.0 / 255.0, 40.0 / 255.0, 48.0 / 255.0);
+			m_view->SetProj(V3d_Zpos);
 		}
 
-		myV3dView->MustBeResized();
+		//在屏幕左下角“贴”上一个金色的、8% 大小的、带深度遮挡的 3D 坐标轴指示器，帮助用户在旋转模型时认清方向
+		m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_GOLD, 0.08, V3d_ZBUFFER);
+		m_view->MustBeResized();
 
 		initViewCube();
 		initAxis();
@@ -69,12 +155,12 @@ namespace SongYun {
 		double YScreen = aNewPos[1] * dpr;
 
 		double x, y, z;
-		myV3dView->Convert(XScreen, YScreen, x, y, z);
+		m_view->Convert(XScreen, YScreen, x, y, z);
 		gp_Pnt worldPnt = gp_Pnt(x, y, z);
 
 		double xEye, yEye, zEye, xAt, yAt, zAt;
-		myV3dView->Eye(xEye, yEye, zEye);
-		myV3dView->At(xAt, yAt, zAt);
+		m_view->Eye(xEye, yEye, zEye);
+		m_view->At(xAt, yAt, zAt);
 		gp_Pnt eyePoint(xEye, yEye, zEye);
 		gp_Pnt atPoint(xAt, yAt, zAt);
 
@@ -94,146 +180,146 @@ namespace SongYun {
 
 	void View::eraseAll()
 	{
-		myContext->EraseAll(false);
+		m_context->EraseAll(false);
 		initDisplayed();
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::erase()
 	{
 		std::vector<Handle(AIS_InteractiveObject)> selectedObjects;
-		myContext->InitSelected();
-		while (myContext->MoreSelected())
+		m_context->InitSelected();
+		while (m_context->MoreSelected())
 		{
-			Handle(AIS_InteractiveObject) aAis = myContext->SelectedInteractive();
+			Handle(AIS_InteractiveObject) aAis = m_context->SelectedInteractive();
 			selectedObjects.push_back(aAis);
-			myContext->NextSelected();
+			m_context->NextSelected();
 		}
 		for (auto aAis : selectedObjects)
 		{
-			myContext->Erase(aAis, false);
+			m_context->Erase(aAis, false);
 		}
 
 		initDisplayed();
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::removeAll()
 	{
-		myContext->RemoveAll(false);
+		m_context->RemoveAll(false);
 		initDisplayed();
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::remove()
 	{
 		std::vector<Handle(AIS_InteractiveObject)> selectedObjects;
-		myContext->InitSelected();
-		while (myContext->MoreSelected())
+		m_context->InitSelected();
+		while (m_context->MoreSelected())
 		{
-			Handle(AIS_InteractiveObject) aAis = myContext->SelectedInteractive();
+			Handle(AIS_InteractiveObject) aAis = m_context->SelectedInteractive();
 			selectedObjects.push_back(aAis);
-			myContext->NextSelected();
+			m_context->NextSelected();
 		}
 		for (auto aAis : selectedObjects)
 		{
-			myContext->Remove(aAis, false);
+			m_context->Remove(aAis, false);
 		}
 		initDisplayed();
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::setProjectionType(Graphic3d_Camera::Projection prj)
 	{
-		myV3dView->Camera()->SetProjectionType(prj);
-		myV3dView->Redraw();
+		m_view->Camera()->SetProjectionType(prj);
+		m_view->Redraw();
 	}
 
 	void View::fitAll()
 	{
-		if (myContext->NbSelected() > 0)
+		if (m_context->NbSelected() > 0)
 		{
-			myContext->FitSelected(myV3dView);
+			m_context->FitSelected(m_view);
 		}
 		else
 		{
-			myV3dView->FitAll();
+			m_view->FitAll();
 		}
 
-		myV3dView->ZFitAll();
-		myV3dView->Redraw();
+		m_view->ZFitAll();
+		m_view->Redraw();
 	}
 
 	void View::setAxo()
 	{
 		if (myIs3dView)
 		{
-			myV3dView->SetProj(V3d_XposYnegZpos);
+			m_view->SetProj(V3d_XposYnegZpos);
 		}
 	}
 
 	void View::setFront()
 	{
-		myV3dView->SetProj(V3d_Yneg);
+		m_view->SetProj(V3d_Yneg);
 	}
 
 	void View::setBack()
 	{
-		myV3dView->SetProj(V3d_Ypos);
+		m_view->SetProj(V3d_Ypos);
 	}
 
 	void View::setLeft()
 	{
-		myV3dView->SetProj(V3d_Xneg);
+		m_view->SetProj(V3d_Xneg);
 	}
 
 	void View::setRight()
 	{
-		myV3dView->SetProj(V3d_Xpos);
+		m_view->SetProj(V3d_Xpos);
 	}
 
 	void View::setTop()
 	{
-		myV3dView->SetProj(V3d_Zpos);
+		m_view->SetProj(V3d_Zpos);
 	}
 
 	void View::setBottom()
 	{
-		myV3dView->SetProj(V3d_Zneg);
+		m_view->SetProj(V3d_Zneg);
 	}
 
 	void View::setShading()
 	{
-		myContext->InitSelected();
-		while (myContext->MoreSelected())
+		m_context->InitSelected();
+		while (m_context->MoreSelected())
 		{
-			Handle(AIS_InteractiveObject) aAis = myContext->SelectedInteractive();
-			myContext->SetDisplayMode(aAis, 1, false);
-			myContext->NextSelected();
+			Handle(AIS_InteractiveObject) aAis = m_context->SelectedInteractive();
+			m_context->SetDisplayMode(aAis, 1, false);
+			m_context->NextSelected();
 		}
 
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::setWireframe()
 	{
-		myContext->InitSelected();
-		while (myContext->MoreSelected())
+		m_context->InitSelected();
+		while (m_context->MoreSelected())
 		{
-			Handle(AIS_InteractiveObject) aAis = myContext->SelectedInteractive();
-			myContext->SetDisplayMode(aAis, 0, false);
+			Handle(AIS_InteractiveObject) aAis = m_context->SelectedInteractive();
+			m_context->SetDisplayMode(aAis, 0, false);
 
-			myContext->NextSelected();
+			m_context->NextSelected();
 		}
 
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::setHLR(bool theState)
 	{
 		QApplication::setOverrideCursor(Qt::WaitCursor);
-		myV3dView->SetComputedMode(theState);
-		myV3dView->Redraw();
+		m_view->SetComputedMode(theState);
+		m_view->Redraw();
 
 		QApplication::restoreOverrideCursor();
 	}
@@ -243,45 +329,45 @@ namespace SongYun {
 		QApplication::setOverrideCursor(Qt::WaitCursor);
 		if (theState)
 		{
-			myV3dView->ChangeRenderingParams().Method = Graphic3d_RM_RAYTRACING;
+			m_view->ChangeRenderingParams().Method = Graphic3d_RM_RAYTRACING;
 		}
 		else
 		{
-			myV3dView->ChangeRenderingParams().Method = Graphic3d_RM_RASTERIZATION;
+			m_view->ChangeRenderingParams().Method = Graphic3d_RM_RASTERIZATION;
 		}
 		myIsRaytracing = theState;
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 		QApplication::restoreOverrideCursor();
 	}
 
 	void View::SetRaytracedShadows(bool theState)
 	{
-		myV3dView->ChangeRenderingParams().IsShadowEnabled = theState;
+		m_view->ChangeRenderingParams().IsShadowEnabled = theState;
 		myIsShadowsEnabled = theState;
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::SetRaytracedReflections(bool theState)
 	{
-		myV3dView->ChangeRenderingParams().IsReflectionEnabled = theState;
+		m_view->ChangeRenderingParams().IsReflectionEnabled = theState;
 		myIsReflectionsEnabled = theState;
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::SetRaytracedAntialiasing(bool theState)
 	{
-		myV3dView->ChangeRenderingParams().IsAntialiasingEnabled = theState;
+		m_view->ChangeRenderingParams().IsAntialiasingEnabled = theState;
 		myIsAntialiasingEnabled = theState;
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	void View::setBackgroundColor(QColor aRetColor)
 	{
 		if (aRetColor.isValid())
 		{
-			myV3dView->SetBgGradientStyle(Aspect_GFM_NONE);
-			myV3dView->SetBackgroundColor(Quantity_TOC_RGB, aRetColor.redF(), aRetColor.greenF(), aRetColor.blueF());
-			myV3dView->Redraw();
+			m_view->SetBgGradientStyle(Aspect_GFM_NONE);
+			m_view->SetBackgroundColor(Quantity_TOC_RGB, aRetColor.redF(), aRetColor.greenF(), aRetColor.blueF());
+			m_view->Redraw();
 		}
 	}
 
@@ -290,20 +376,20 @@ namespace SongYun {
 		if (!fileName.isEmpty())
 		{
 			Handle(Graphic3d_TextureEnv) aTexture = new Graphic3d_TextureEnv(fileName.toStdString().c_str());
-			myV3dView->SetTextureEnv(aTexture);
+			m_view->SetTextureEnv(aTexture);
 		}
 		else
 		{
-			myV3dView->SetTextureEnv(Handle(Graphic3d_TextureEnv)());
+			m_view->SetTextureEnv(Handle(Graphic3d_TextureEnv)());
 		}
 
-		myV3dView->Redraw();
+		m_view->Redraw();
 	}
 
 	void View::setTransparency(double aTranspValue)
 	{
 		NCollection_List<Handle(AIS_InteractiveObject)> anAisObjectsList;
-		myContext->DisplayedObjects(anAisObjectsList);
+		m_context->DisplayedObjects(anAisObjectsList);
 		if (anAisObjectsList.Extent() == 0)
 		{
 			return;
@@ -311,9 +397,9 @@ namespace SongYun {
 		for (NCollection_List<Handle(AIS_InteractiveObject)>::Iterator anIter(anAisObjectsList); anIter.More(); anIter.Next())
 		{
 			const Handle(AIS_InteractiveObject)& anAisObject = anIter.Value();
-			myContext->SetTransparency(anAisObject, aTranspValue, Standard_False);
+			m_context->SetTransparency(anAisObject, aTranspValue, Standard_False);
 		}
-		myContext->UpdateCurrentViewer();
+		m_context->UpdateCurrentViewer();
 	}
 
 	QPaintEngine* View::paintEngine() const
@@ -323,34 +409,40 @@ namespace SongYun {
 
 	void View::showEvent(QShowEvent* event)
 	{
-		QWidget::showEvent(event);
+		//QWidget::showEvent(event);
 
-		// 窗口已经映射，取当前 QWindow 所在屏幕的 DPR
-		QWindow* win = window()->windowHandle();
-		QScreen* scr = win ? win->screen() : nullptr;
-		const qreal newDpr = scr ? scr->devicePixelRatio() : devicePixelRatioF();
+		//// 窗口已经映射，取当前 QWindow 所在屏幕的 DPR
+		//QWindow* win = window()->windowHandle();
+		//QScreen* scr = win ? win->screen() : nullptr;
+		//const qreal newDpr = scr ? scr->devicePixelRatio() : devicePixelRatioF();
 
-		if (!qFuzzyCompare(dpr, newDpr))
-		{
-			dpr = newDpr;
-			Handle(OcctWindow) hWnd = Handle(OcctWindow)::DownCast(myV3dView->Window());
-			if (!hWnd.IsNull())
-			{
-				hWnd->setDPR(dpr);
-			}
-		}
-	}
+		//if (!qFuzzyCompare(dpr, newDpr))
+		//{
+		//	dpr = newDpr;
+		//	//Handle(Aspect_NeutralWindow) hWnd = Handle(Aspect_NeutralWindow)::DownCast(m_view->Window());
+		//	//if (!hWnd.IsNull())
+		//	//{
+		//	//	hWnd->setDPR(dpr);
+		//	//}
+		//}
+		//if (!m_isInitialized && winId() != 0)
+		//{
+		//	// ...[您的OCCT初始化代码]...
 
-	void View::paintEvent(QPaintEvent* event)
-	{
-		myV3dView->Redraw();
+		//	m_isInitialized = true;
+
+		//	// 关键：初始化完成后立即发出信号！
+		//	emit initialized(); // ← 这行不能漏！
+		//}
+		bindWindowIfNeeded();
+		update();
 	}
 
 	void View::resizeEvent(QResizeEvent* event)
 	{
-		if (!myV3dView.IsNull())
+		if (!m_view.IsNull())
 		{
-			myV3dView->MustBeResized();
+			m_view->MustBeResized();
 		}
 	}
 
@@ -358,14 +450,20 @@ namespace SongYun {
 	{
 		myClickPos = NCollection_Vec2<int>(dpr * theEvent->pos().x(), dpr * theEvent->pos().y());
 
-		if (!myV3dView.IsNull())
+		if (!m_view.IsNull())
 		{
+			if (auto* tool =
+				ToolManager::Instance().Current())
+			{
+				tool->MousePress(theEvent);
+			}
+
 			if (theEvent->button() == Qt::MiddleButton && theEvent->modifiers() & Qt::ShiftModifier)
 			{
 				if (myIs3dView)
 				{
 					myCurrentMode = CurrentAction3d_DynamicRotation;
-					myV3dView->StartRotation(myClickPos.x(), myClickPos.y());
+					m_view->StartRotation(myClickPos.x(), myClickPos.y());
 				}
 			}
 			else if (theEvent->button() == Qt::MiddleButton)
@@ -381,39 +479,39 @@ namespace SongYun {
 	void View::mouseReleaseEvent(QMouseEvent* theEvent)
 	{
 		const NCollection_Vec2<int> aNewPos = NCollection_Vec2<int>(dpr * theEvent->pos().x(), dpr * theEvent->pos().y());
-		if (!myV3dView.IsNull())
+		if (!m_view.IsNull())
 		{
 			myCurrentMode = CurrentAction3d_Nothing;
 			activateCursor(myCurrentMode);
-			bool hasRubberBand = myContext->IsDisplayed(myRubberBand);
+			bool hasRubberBand = m_context->IsDisplayed(myRubberBand);
 			if (theEvent->button() == Qt::LeftButton && !hasRubberBand)
 			{
 				if (theEvent->modifiers() & Qt::ControlModifier)
-					myContext->SelectDetected(AIS_SelectionScheme_XOR);
+					m_context->SelectDetected(AIS_SelectionScheme_XOR);
 				else if (theEvent->modifiers() & Qt::ShiftModifier)
 				{
-					myContext->SelectDetected(AIS_SelectionScheme_Add);
+					m_context->SelectDetected(AIS_SelectionScheme_Add);
 				}
 				else
 				{
-					myContext->SelectDetected(); // 此代码没有viewcube无法旋转
+					m_context->SelectDetected(); // 此代码没有viewcube无法旋转
 				}
 			}
 			else if (theEvent->button() == Qt::LeftButton && hasRubberBand)
 			{
 				if (theEvent->modifiers() & Qt::ControlModifier)
 				{
-					myContext->SelectRectangle(myClickPos, aNewPos, myV3dView, AIS_SelectionScheme_XOR);
+					m_context->SelectRectangle(myClickPos, aNewPos, m_view, AIS_SelectionScheme_XOR);
 				}
 				else if (theEvent->modifiers() & Qt::ShiftModifier)
 				{
-					myContext->SelectRectangle(myClickPos, aNewPos, myV3dView, AIS_SelectionScheme_Add);
+					m_context->SelectRectangle(myClickPos, aNewPos, m_view, AIS_SelectionScheme_Add);
 				}
 				else if (!(theEvent->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier)))
 				{
-					myContext->SelectRectangle(myClickPos, aNewPos, myV3dView);
+					m_context->SelectRectangle(myClickPos, aNewPos, m_view);
 				}
-				myContext->Remove(myRubberBand, false);
+				m_context->Remove(myRubberBand, false);
 			}
 
 			myClickPos = aNewPos;
@@ -426,18 +524,22 @@ namespace SongYun {
 	void View::mouseMoveEvent(QMouseEvent* theEvent)
 	{
 		const NCollection_Vec2<int> aNewPos(dpr * theEvent->pos().x(), dpr * theEvent->pos().y());
-		if (!myV3dView.IsNull())
+		if (!m_view.IsNull())
 		{
-			myContext->MoveTo(aNewPos.x(), aNewPos.y(), myV3dView, false);
-
+			m_context->MoveTo(aNewPos.x(), aNewPos.y(), m_view, false);
+			if (auto* tool =
+				ToolManager::Instance().Current())
+			{
+				tool->MouseMove(theEvent);
+			}
 			if (theEvent->buttons() & Qt::LeftButton)
 			{
 				myRubberBand->SetRectangle(myClickPos.x(), height() * dpr - myClickPos.y(),
 					aNewPos.x(), height() * dpr - aNewPos.y());
-				if (myContext->IsDisplayed(myRubberBand))
-					myContext->Redisplay(myRubberBand, false);
+				if (m_context->IsDisplayed(myRubberBand))
+					m_context->Redisplay(myRubberBand, false);
 				else
-					myContext->Display(myRubberBand, false);
+					m_context->Display(myRubberBand, false);
 			}
 			else
 			{
@@ -449,13 +551,13 @@ namespace SongYun {
 					myCurrentMode = CurrentAction3d_Nothing;
 					break;
 				case CurrentAction3d_DynamicPanning:
-					myV3dView->Pan(aNewPos.x() - myClickPos.x(), myClickPos.y() - aNewPos.y());
+					m_view->Pan(aNewPos.x() - myClickPos.x(), myClickPos.y() - aNewPos.y());
 					myClickPos = aNewPos;
 					break;
 				case CurrentAction3d_DynamicRotation:
 					if (myIs3dView)
 					{
-						myV3dView->Rotation(aNewPos.x(), aNewPos.y());
+						m_view->Rotation(aNewPos.x(), aNewPos.y());
 					}
 					break;
 				case CurrentAction3d_ObjectDececting:
@@ -472,12 +574,12 @@ namespace SongYun {
 	void View::wheelEvent(QWheelEvent* theEvent)
 	{
 		myClickPos = NCollection_Vec2<int>(dpr * theEvent->position().x(), dpr * theEvent->position().y());
-		if (!myV3dView.IsNull())
+		if (!m_view.IsNull())
 		{
 			myCurrentMode = CurrentAction3d_DynamicZooming;
 
-			myV3dView->StartZoomAtPoint(myClickPos.x(), myClickPos.y());
-			myV3dView->ZoomAtPoint(0, 0, theEvent->angleDelta().y() / 8, 0);
+			m_view->StartZoomAtPoint(myClickPos.x(), myClickPos.y());
+			m_view->ZoomAtPoint(0, 0, theEvent->angleDelta().y() / 8, 0);
 
 			activateCursor(myCurrentMode);
 			update();
@@ -486,13 +588,13 @@ namespace SongYun {
 
 	void View::initDisplayed(bool theUpdate)
 	{
-		if (!myContext->IsDisplayed(myViewCube))
+		if (!m_context->IsDisplayed(myViewCube))
 		{
-			myContext->Display(myViewCube, theUpdate);
+			m_context->Display(myViewCube, theUpdate);
 		}
-		if (!myContext->IsDisplayed(myTrihedron))
+		if (!m_context->IsDisplayed(myTrihedron))
 		{
-			myContext->Display(myTrihedron, theUpdate);
+			m_context->Display(myTrihedron, theUpdate);
 		}
 	}
 
@@ -510,7 +612,7 @@ namespace SongYun {
 		datumAspect->TextAspect(Prs3d_DatumParts_ZAxis)->SetColor(Quantity_NOC_BLUE);
 		myDrawer->SetDatumAspect(datumAspect);
 		myViewCube->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_TriedronPers, Aspect_TOTP_RIGHT_UPPER, NCollection_Vec2<int>(100, 100)));
-		myContext->Display(myViewCube, false);
+		m_context->Display(myViewCube, false);
 	}
 
 	void View::initAxis()
@@ -535,7 +637,7 @@ namespace SongYun {
 		Handle(Graphic3d_TransformPers) aPers = new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp_Pnt(0.0, 0.0, 0.0));
 		myTrihedron->SetTransformPersistence(aPers);
 
-		myContext->Display(myTrihedron, 0, AIS_TrihedronSelectionMode_Axes, false);
+		m_context->Display(myTrihedron, 0, AIS_TrihedronSelectionMode_Axes, false);
 	}
 
 	void View::initRubberBand()
@@ -553,7 +655,7 @@ namespace SongYun {
 
 				this->dpr = s ? s->devicePixelRatio() : this->devicePixelRatioF();
 				// 同步 OcctWindow 的 DPR 并触发视图重算尺寸
-				Handle(OcctWindow) hWnd = Handle(OcctWindow)::DownCast(myV3dView->Window());
+				Handle(OcctWindow) hWnd = Handle(OcctWindow)::DownCast(m_view->Window());
 				if (!hWnd.IsNull())
 				{
 					hWnd->setDPR(this->dpr);
@@ -603,5 +705,30 @@ namespace SongYun {
 			break;
 		}
 		setCursor(*aCursor);
+	}
+	void View::bindWindowIfNeeded()
+	{
+		if (m_windowBound || m_view.IsNull())
+			return;
+
+		WId win = (WId)this->winId();
+		Handle(WNT_Window) window = new WNT_Window((Aspect_Handle)win);
+
+		m_view->SetWindow(window);
+
+		if (!window->IsMapped())
+			window->Map();
+
+		m_view->MustBeResized();
+
+		m_windowBound = true;
+		qDebug() << "OCCT window bound (stable mode)";
+		if (!m_ready)
+		{
+			init();
+			m_ready = true;
+			emit viewReady();   // ⭐关键
+		}
+
 	}
 }

@@ -10,7 +10,7 @@ namespace SongYun {
 	class CommandManager : public Singleton<CommandManager>
 	{
 	public:
-		SONGYUN_API void execute(const std::shared_ptr<ICommand>& command);
+		SONGYUN_API void execute(ICommand* command);
 		SONGYUN_API void execute(const std::string& commandId);
 		SONGYUN_API void undo();
 		SONGYUN_API void redo();
@@ -20,7 +20,7 @@ namespace SongYun {
 		SONGYUN_API bool canRedo() const;
 
 	private:
-		std::vector<std::shared_ptr<ICommand>> history_;
+		std::vector<ICommand*> history_;
 		size_t index_ = 0;
 	};
 

@@ -5,20 +5,20 @@
 
 namespace SongYun {
 
-class View;
+	class View;
 
-class ViewManager : public QObject
-{
-    Q_OBJECT
+	class ViewManager : public QObject
+	{
+		Q_OBJECT
 
-public:
-    SONGYUN_API explicit ViewManager(QObject* parent = nullptr);
+	public:
+		SONGYUN_API explicit ViewManager(QObject* parent = nullptr);
 
-    SONGYUN_API void setActiveView(View* view);
-    SONGYUN_API View* activeView() const;
+		SONGYUN_API void setActiveView(View* view);
+		SONGYUN_API View* activeView() const;
 
-private:
-    View* activeView_ = nullptr;
-};
+	private:
+		View* activeView_ = nullptr;
+	};
 
 } // namespace SongYun

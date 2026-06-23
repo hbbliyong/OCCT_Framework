@@ -1,4 +1,5 @@
 #include "view/ViewManager.h"
+#include "view/View.h"
 namespace SongYun {
 	ViewManager::ViewManager(QObject* parent)
 		: QObject(parent), activeView_(nullptr)

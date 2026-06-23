@@ -3,11 +3,11 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 
-#include "view/OccView.h"
+#include "view/View.h"
 namespace SongYun
 {
 	PickPointTool::PickPointTool(
-		OccView* view)
+		View* view)
 		: m_view(view)
 	{}
 
@@ -27,9 +27,9 @@ namespace SongYun
 
 		Standard_Real x, y, z;
 
-		m_view->view()->Convert(
-			e->position().x(),
-			e->position().y(),
+		m_view->getV3dView()->Convert(
+			e->position().x() * m_view->getDPR(),
+			e->position().y() * m_view->getDPR(),
 			x, y, z);
 
 		if (OnPicked)

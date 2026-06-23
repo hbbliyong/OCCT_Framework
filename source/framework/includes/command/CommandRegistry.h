@@ -12,7 +12,7 @@ namespace SongYun
 {
 	class ICommand;
 
-	class  CommandRegistry :public Singleton<CommandRegistry>
+	class  CommandRegistry
 	{
 	public:
 		SONGYUN_API static CommandRegistry& Instance();

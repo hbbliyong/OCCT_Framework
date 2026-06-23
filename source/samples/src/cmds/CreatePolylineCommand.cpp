@@ -8,27 +8,20 @@
 #include <gp_Pnt.hxx>
 #include "app/App.h"
 #include "selection/SelectionManager.h"
+#include "document/DocumentManager.h"
+#include <BRepPrimAPI_MakeCylinder.hxx>
 namespace Samples
 {
 	bool CreatePolylineCommand::execute()
 	{
 
-		context().selectionManager().PickPoint("Select a point on the screen:");
-		if (myExecuted)
-		{
-			if (!myPolyline.IsNull())
-			{
-				myContext->Display(myPolyline, Standard_True);
-				if (myStatusCallback)
-					myStatusCallback("Polyline created.");
-				return true;
-			}
-			return false;
+		auto result = context().selectionManager().PickPoint("Select a point on the screen:");
+		if (result.has_value()) {
+			const TopoDS_Shape cylinder = BRepPrimAPI_MakeCylinder(gp_Ax2(result.value(), gp_Dir(0, 0, 1)), 20.0, 120.0).Shape();
+			this->context().documentManager().activeDocument()->addObject(cylinder);
 		}
 
-		if (myStatusCallback)
-			myStatusCallback("Left-click to collect polyline points; right-click to finish.");
-		return true;
+		return false;
 	}
 
 	bool CreatePolylineCommand::undo()

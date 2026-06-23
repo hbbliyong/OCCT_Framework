@@ -4,10 +4,26 @@
 #include "QApplication"
 int main(int argc, char* argv[])
 {
-	QSurfaceFormat fmt = QSurfaceFormat::defaultFormat();
-	fmt.setVersion(3, 3);
-	fmt.setProfile(QSurfaceFormat::CoreProfile);
-	QSurfaceFormat::setDefaultFormat(fmt);
+	// 强制 Qt 使用桌面 OpenGL，而不是 RHI/GLES/Vulkan
+	QCoreApplication::setAttribute(Qt::AA_UseDesktopOpenGL);
+	QCoreApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
+
+	// 如果是 Qt 6，通过环境变量彻底关闭 RHI 后端
+	qputenv("QT_QUICK_BACKEND", "software"); // 如果有 QML
+	qputenv("QSG_RHI_BACKEND", "opengl");
+	qputenv("QT_OPENGL", "desktop");
+
+	QSurfaceFormat format;
+	format.setRenderableType(QSurfaceFormat::OpenGL);
+	format.setProfile(QSurfaceFormat::CoreProfile);
+	format.setVersion(4, 6);   // ⭐关键改这里
+	format.setDepthBufferSize(24);
+	format.setStencilBufferSize(8);
+	format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+
+	QSurfaceFormat::setDefaultFormat(format);
+
+
 	QApplication app(argc, argv);
 	SongYun::App::Instance().initialize(app, "OCCT Qt Framework");
 

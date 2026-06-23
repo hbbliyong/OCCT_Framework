@@ -6,6 +6,9 @@
 #include <TDataStd_Name.hxx>
 #include <XCAFApp_Application.hxx>
 #include <map>
+#include "app/App.h"
+#include "view/ViewManager.h"
+#include "view/View.h"
 namespace SongYun {
 	struct Document::Impl
 	{
@@ -59,6 +62,8 @@ namespace SongYun {
 	{
 		TDF_Label label = m_impl->shapeTool->NewShape();
 		m_impl->shapeTool->SetShape(label, shape);
+
+		App::Instance().commandContext().viewManager().activeView()->attach(label);
 
 		int id = m_impl->nextId++;
 		m_impl->idToLabel[id] = label;

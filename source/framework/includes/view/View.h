@@ -3,7 +3,7 @@
 #include "core/CoreMacro.hpp"
 #include "occ/OcctWindow.h"
 
-#include <QWidget>
+#include <QOpenGLWidget>
 #include <QMouseEvent>
 #include <QApplication>
 #include <QPainter>
@@ -23,7 +23,8 @@
 #include "AIS_RubberBand.hxx"
 #include "V3d_Viewer.hxx"
 #include "V3d_View.hxx"
-
+#include "XCAFPrs_AISObject.hxx"
+#include "TDF_Label.hxx"
 namespace SongYun {
 
 	enum CurrentAction3d
@@ -66,7 +67,7 @@ namespace SongYun {
 		RaytraceAction_Antialiasing
 	};
 
-	class View : public QWidget
+	class View : public QOpenGLWidget
 	{
 		Q_OBJECT
 
@@ -74,7 +75,7 @@ namespace SongYun {
 		void selectionChanged();
 
 	public:
-		View(const Handle(AIS_InteractiveContext)& theContext, bool theIs3dView = true, QWidget* theParent = nullptr);
+		View(bool theIs3dView = true, QWidget* theParent = nullptr);
 
 		/**
 		 * @brief 初始化
@@ -93,7 +94,7 @@ namespace SongYun {
 		 */
 		const Handle(V3d_View) getV3dView() const
 		{
-			return myV3dView;
+			return m_view;
 		}
 
 		/**
@@ -102,7 +103,7 @@ namespace SongYun {
 		 */
 		Handle(AIS_InteractiveContext)& getContext()
 		{
-			return myContext;
+			return m_context;
 		}
 
 		/**
@@ -162,12 +163,23 @@ namespace SongYun {
 		void setBackgroundColor(QColor aRetColor);
 		void setEnvironmentMap(const QString& fileName);
 		void setTransparency(double aTranspValue);
-
+		void attach(const TDF_Label& label)
+		{
+			auto	m_ais = new XCAFPrs_AISObject(label);
+			m_context->Display(m_ais, Standard_True);
+		}
+	signals:
+		void initialized();
+		void viewReady();
 	protected:
+		virtual void initializeGL() override;
+		virtual void paintGL() override;
+		virtual void resizeGL(int w, int h) override;
+
 		virtual  QPaintEngine* paintEngine() const;
 
 		virtual  void showEvent(QShowEvent* event) override;
-		virtual  void paintEvent(QPaintEvent*) override;
+
 		virtual  void resizeEvent(QResizeEvent*) override;
 		virtual  void mousePressEvent(QMouseEvent*) override;
 		virtual  void mouseReleaseEvent(QMouseEvent*) override;
@@ -198,11 +210,13 @@ namespace SongYun {
 		void buildSignals();
 		void initCursors();
 		void activateCursor(const CurrentAction3d);
-
+		void bindWindowIfNeeded();
+	private:
 		bool myIs3dView;
 		double dpr;
-		Handle(V3d_View) myV3dView;
-		Handle(AIS_InteractiveContext) myContext;
+		Handle(V3d_View) m_view;
+		Handle(V3d_Viewer) m_viewer;
+		Handle(AIS_InteractiveContext) m_context;
 		Handle(AIS_ViewCube) myViewCube;
 		Handle(AIS_Trihedron) myTrihedron;
 		Handle(AIS_RubberBand) myRubberBand;
@@ -214,6 +228,12 @@ namespace SongYun {
 		bool myIsShadowsEnabled;
 		bool myIsReflectionsEnabled;
 		bool myIsAntialiasingEnabled;
+
+
+
+		bool m_windowBound = false;
+		bool m_initialized = false;
+		bool m_ready = false;
 	};
 
 } // namespace SongYun

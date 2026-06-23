@@ -4,7 +4,7 @@
 #include "app/App.h"
 namespace SongYun {
 
-	void CommandManager::execute(const std::shared_ptr<ICommand>& command)
+	void CommandManager::execute(ICommand* command)
 	{
 		if (!command)
 			return;
@@ -25,9 +25,9 @@ namespace SongYun {
 		std::cout << "Executing command: " << &SongYun::CommandRegistry::Instance() << std::endl;
 		if (command)
 		{
-			std::shared_ptr<ICommand> cmdPtr(command); // 直接使用原始指针创建shared_ptr
+			//std::shared_ptr<ICommand> cmdPtr(command); // 直接使用原始指针创建shared_ptr
 
-			execute(cmdPtr);
+			execute(command);
 		}
 	}
 

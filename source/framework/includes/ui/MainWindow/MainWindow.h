@@ -9,7 +9,7 @@
 #include <V3d_Viewer.hxx>
 #include "command/CommandManager.h"
 #include "command/ICommand.h"
-#include "view/occView.h"
+#include "view/View.h"
 
 class QMenuBar;
 class QToolBar;
@@ -39,34 +39,27 @@ namespace SongYun {
 		MainWindow(const MainWindow&) = delete;
 		MainWindow& operator=(const MainWindow&) = delete;
 
-		SONGYUN_API void initOCCTView();
-		SONGYUN_API void initMenuBar();
-		SONGYUN_API void initStatusBar();
-		SONGYUN_API void initConnections();
-		SONGYUN_API void initToolBar();
+		void initOCCTView();
+		void initMenuBar();
+		void initStatusBar();
+		void initConnections();
+		void initToolBar();
 
-		SONGYUN_API void runModelData();
-		SONGYUN_API void processSelectChanged();
-		SONGYUN_API void displayCustormSurface();
-		SONGYUN_API void setCurrentCommand(const std::shared_ptr<ICommand>& command);
-		SONGYUN_API void updateStatus(const QString& message);
 
-		SONGYUN_API bool eventFilter(QObject* obj, QEvent* event) override;
-		SONGYUN_API void onViewMouseRelease(QMouseEvent* event);
+		void updateStatus(const QString& message);
+
+		bool eventFilter(QObject* obj, QEvent* event) override;
+		void onViewMouseRelease(QMouseEvent* event);
 
 	private:
-		SONGYUN_API Handle(V3d_Viewer) Viewer(const V3d_TypeOfOrientation theViewProj);
 
-		SONGYUN_API void updateStatusBar(const std::vector<int>& aNewPos);
+		void updateStatusBar(const std::vector<int>& aNewPos);
 
-		Handle(V3d_Viewer) myViewer;
-		Handle(AIS_InteractiveContext) myContext;
 		std::vector<int> myClickPos;
 		std::vector<Handle(AIS_InteractiveObject)> objs;
 
-		OccView* view_occt;
+		View* view_occt;
 		CommandManager myCommandManager;
-		std::shared_ptr<ICommand> myCurrentCommand;
 
 		QMenuBar* myMenuBar;
 		QToolBar* myToolBar;

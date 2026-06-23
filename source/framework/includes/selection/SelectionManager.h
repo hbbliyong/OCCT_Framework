@@ -10,7 +10,7 @@ namespace SongYun
 {
 
 	class SelectionFilter;
-	class OccView;
+	class View;
 
 	enum class SelectionState
 	{
@@ -29,7 +29,7 @@ namespace SongYun
 		SONGYUN_API const PickResult& currentSelection() const;
 
 		void SetView(
-			OccView* view) {
+			View* view) {
 			m_view = view;
 		}
 
@@ -41,7 +41,7 @@ namespace SongYun
 		std::shared_ptr<SelectionFilter> filter_;
 		PickResult currentSelection_;
 
-		OccView* m_view{};
+		View* m_view{};
 
 		SelectionState m_state =
 			SelectionState::Idle;

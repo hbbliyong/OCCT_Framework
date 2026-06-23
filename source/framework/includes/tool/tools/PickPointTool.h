@@ -7,13 +7,13 @@
 #include <gp_Pnt.hxx>
 namespace SongYun
 {
-	class OccView;
+	class View;
 
 	class PickPointTool : public Tool
 	{
 	public:
 		explicit PickPointTool(
-			OccView* view);
+			View* view);
 
 		std::function<void(const gp_Pnt&)> OnPicked;
 
@@ -26,6 +26,6 @@ namespace SongYun
 			QKeyEvent* e) override;
 
 	private:
-		OccView* m_view{};
+		View* m_view{};
 	};
 }

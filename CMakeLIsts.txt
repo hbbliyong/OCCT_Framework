@@ -45,3 +45,8 @@ find_package(OpenCASCADE REQUIRED
 )
 add_subdirectory(source/framework)
 add_subdirectory(source/samples)
+
+if(MSVC)
+    # 开启多处理器编译
+    add_compile_options(/MP)
+endif()
