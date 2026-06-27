@@ -1,74 +1,117 @@
 #include "command/CommandManager.h"
 #include "command/CommandRegistry.h"
-#include "iostream"
+#include "command/Transaction.h"
+#include "document/Document.h"
+#include "document/DocumentManager.h"
 #include "app/App.h"
+#include <QEventLoop>
+#include <iostream>
+
 namespace SongYun {
+
+	void CommandManager::setActiveLoop(QEventLoop* loop) { m_activeLoop = loop; }
+
+	void CommandManager::interruptActive()
+	{
+		if (m_activeLoop && m_activeLoop->isRunning())
+			m_activeLoop->quit();
+		m_activeLoop = nullptr;
+		m_activeCommand = nullptr;
+	}
+
+	bool CommandManager::isExecuting() const { return m_activeCommand != nullptr; }
+
+	Document* CommandManager::activeDocument() const
+	{
+		return DocumentManager::Instance().activeDocument().get();
+	}
+
+	// ============================================================
+	// execute — 核心：Transaction 包裹 command
+	// ============================================================
 
 	void CommandManager::execute(ICommand* command)
 	{
-		if (!command)
-			return;
+		if (!command) return;
+
+		if (m_activeCommand)
+			interruptActive();
+
 		command->setContext(&App::Instance().commandContext());
-		if (index_ < history_.size())
-			history_.erase(history_.begin() + index_, history_.end());
+		m_activeCommand = command;
 
-		if (command->execute())
+		auto* doc = activeDocument();
+		if (!doc) { m_activeCommand = nullptr; return; }
+
+		// 1. 开启事务
+		auto txn = std::make_unique<Transaction>(doc);
+		doc->setActiveTransaction(txn.get());
+
+		// 2. 执行命令
+		bool ok = command->execute();
+
+		// 3. 关闭事务记录
+		doc->setActiveTransaction(nullptr);
+
+		// 4. 如果成功 → 记录事务，清空 redo
+		if (ok && !txn->empty())
 		{
-			history_.push_back(command);
-			index_ = history_.size();
+			m_redoStack.clear();
+			m_undoStack.push_back(std::move(txn));
 		}
+
+		m_activeCommand = nullptr;
+		m_activeLoop = nullptr;
 	}
 
-	SONGYUN_API void CommandManager::execute(const std::string& commandId)
+	void CommandManager::execute(const std::string& commandId)
 	{
-		const auto command = SongYun::CommandRegistry::Instance().getCommand(commandId.c_str());
-		std::cout << "Executing command: " << &SongYun::CommandRegistry::Instance() << std::endl;
-		if (command)
-		{
-			//std::shared_ptr<ICommand> cmdPtr(command); // 直接使用原始指针创建shared_ptr
-
-			execute(command);
-		}
+		auto* cmd = CommandRegistry::Instance().getCommand(commandId.c_str());
+		std::cout << "Executing command: " << commandId << std::endl;
+		if (cmd) execute(cmd);
 	}
+
+	// ============================================================
+	// undo / redo — Transaction 重放
+	// ============================================================
 
 	void CommandManager::undo()
 	{
-		if (!canUndo())
-			return;
+		if (!canUndo()) return;
 
-		auto& command = history_[index_ - 1];
-		if (command && command->undo())
-		{
-			--index_;
-		}
+		auto* doc = activeDocument();
+
+		auto txn = std::move(m_undoStack.back());
+		m_undoStack.pop_back();
+
+		doc->setActiveTransaction(nullptr);  // undo 内部操作不记录新事务
+		txn->undo();
+
+		m_redoStack.push_back(std::move(txn));
 	}
 
 	void CommandManager::redo()
 	{
-		if (!canRedo())
-			return;
+		if (!canRedo()) return;
 
-		auto& command = history_[index_];
-		if (command && command->execute())
-		{
-			++index_;
-		}
+		auto* doc = activeDocument();
+
+		auto txn = std::move(m_redoStack.back());
+		m_redoStack.pop_back();
+
+		doc->setActiveTransaction(nullptr);
+		txn->redo();
+
+		m_undoStack.push_back(std::move(txn));
 	}
+
+	bool CommandManager::canUndo() const { return !m_undoStack.empty(); }
+	bool CommandManager::canRedo() const { return !m_redoStack.empty(); }
 
 	void CommandManager::clear()
 	{
-		history_.clear();
-		index_ = 0;
-	}
-
-	bool CommandManager::canUndo() const
-	{
-		return index_ > 0 && index_ <= history_.size();
-	}
-
-	bool CommandManager::canRedo() const
-	{
-		return index_ < history_.size();
+		m_undoStack.clear();
+		m_redoStack.clear();
 	}
 
 } // namespace SongYun

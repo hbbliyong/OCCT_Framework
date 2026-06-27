@@ -2,11 +2,18 @@
 
 #include "core/CoreMacro.hpp"
 #include "command/ICommand.h"
+#include "command/Transaction.h"
+#include "common/Singleton.h"
 #include <memory>
 #include <vector>
-#include "common/Singleton.h"
+
+class QEventLoop;
+
 namespace SongYun {
 
+	class Document;
+
+	/// @brief 命令管理器 — Transaction 生命周期 + undo/redo + 中断
 	class CommandManager : public Singleton<CommandManager>
 	{
 	public:
@@ -19,9 +26,18 @@ namespace SongYun {
 		SONGYUN_API bool canUndo() const;
 		SONGYUN_API bool canRedo() const;
 
+		SONGYUN_API void setActiveLoop(QEventLoop* loop);
+		SONGYUN_API void interruptActive();
+		SONGYUN_API bool isExecuting() const;
+
 	private:
-		std::vector<ICommand*> history_;
-		size_t index_ = 0;
+		Document* activeDocument() const;
+
+		std::vector<std::unique_ptr<Transaction>> m_undoStack;
+		std::vector<std::unique_ptr<Transaction>> m_redoStack;
+
+		ICommand* m_activeCommand = nullptr;
+		QEventLoop* m_activeLoop = nullptr;
 	};
 
 } // namespace SongYun

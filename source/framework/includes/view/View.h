@@ -2,6 +2,7 @@
 
 #include "core/CoreMacro.hpp"
 #include "occ/OcctWindow.h"
+#include "document/DocumentObserver.h"
 
 #include <QOpenGLWidget>
 #include <QMouseEvent>
@@ -24,8 +25,12 @@
 #include "V3d_Viewer.hxx"
 #include "V3d_View.hxx"
 #include "XCAFPrs_AISObject.hxx"
-#include "TDF_Label.hxx"
+#include <TDF_Label.hxx>
+#include <map>
+
 namespace SongYun {
+
+	class Document;
 
 	enum CurrentAction3d
 	{
@@ -67,7 +72,7 @@ namespace SongYun {
 		RaytraceAction_Antialiasing
 	};
 
-	class View : public QOpenGLWidget
+	class View : public QOpenGLWidget, public DocumentObserver
 	{
 		Q_OBJECT
 
@@ -75,11 +80,14 @@ namespace SongYun {
 		void selectionChanged();
 
 	public:
-		View(bool theIs3dView = true, QWidget* theParent = nullptr);
+		/// 构造即绑定 Document（一对一），View 自动注册为 DocumentObserver
+		SONGYUN_API explicit View(Document* doc, QWidget* parent = nullptr);
 
-		/**
-		 * @brief 初始化
-		 */
+		/// 临时预览（不写入 Document，用于绘制过程反馈）
+		SONGYUN_API void showTemporaryShape(const TopoDS_Shape& shape);
+		SONGYUN_API void updateTemporaryShape(const TopoDS_Shape& shape);
+		SONGYUN_API void clearTemporaryShape();
+
 		void init();
 
 		/**
@@ -163,11 +171,10 @@ namespace SongYun {
 		void setBackgroundColor(QColor aRetColor);
 		void setEnvironmentMap(const QString& fileName);
 		void setTransparency(double aTranspValue);
-		void attach(const TDF_Label& label)
-		{
-			auto	m_ais = new XCAFPrs_AISObject(label);
-			m_context->Display(m_ais, Standard_True);
-		}
+		// DocumentObserver 实现
+		void onObjectAdded(int id, const TopoDS_Shape& shape) override;
+		void onObjectRemoved(int id) override;
+
 	signals:
 		void initialized();
 		void viewReady();
@@ -230,6 +237,10 @@ namespace SongYun {
 		bool myIsAntialiasingEnabled;
 
 
+
+		Document* m_doc = nullptr;
+		std::map<int, Handle(AIS_InteractiveObject)> m_aisMap;
+		Handle(AIS_Shape) m_tempAIS;   // 临时预览（不关联 Document）
 
 		bool m_windowBound = false;
 		bool m_initialized = false;

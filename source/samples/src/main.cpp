@@ -1,6 +1,7 @@
 #include "app/App.h"
 #include "ui/MainWindow/MainWindow.h"
 #include "document/DocumentManager.h"
+#include "setup/MenuBarSetup.h"
 #include "QApplication"
 int main(int argc, char* argv[])
 {
@@ -35,9 +36,9 @@ int main(int argc, char* argv[])
 	mainWindow.resize(800, 600);				 // 设置初始窗口大小
 	mainWindow.show();
 
-	// 示例：获取菜单栏和工具栏
-	auto* menuBar = mainWindow.menuBar();
-	auto* toolBar = mainWindow.toolBar();
+	// 统一初始化菜单栏和工具栏（复用 ActionManager 的缓存 Action）
+	Samples::MenuBarSetup::initialize(mainWindow.menuBar(), mainWindow.toolBar(),
+									  mainWindow.actionManager());
 
 	int result = SongYun::App::Instance().application()->exec();
 	SongYun::App::Instance().shutdown();

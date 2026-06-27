@@ -5,11 +5,11 @@
 
 namespace Samples
 {
-	class CreateCylinderCommand : public SongYun::ICommand
+	class PickBuildCommand : public SongYun::ICommand
 	{
 	public:
 		bool execute() override;
-		QString name() const override { return "CreateCylinder"; }
+		QString name() const override { return "PickBuild"; }
 	};
 
 } // namespace Samples

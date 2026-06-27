@@ -12,6 +12,8 @@ namespace SongYun {
 	class DocumentManager;
 	class SelectionManager;
 	class ViewManager;
+	class EventBus;
+	class StatusService;
 
 	class SONGYUN_API App
 	{
@@ -24,29 +26,27 @@ namespace SongYun {
 		QApplication* application() const noexcept;
 		const QString& applicationName() const noexcept;
 
-	public:
 		CommandManager& commandManager();
-		//ToolManager& toolManager();
-		//DocumentManager& documentManager();
-		//SelectionManager& selectionManager();
-		//ViewManager& viewManager();
 		CommandContext& commandContext();
+		EventBus&       eventBus();
+		StatusService&  statusService();
+
 	private:
 		App();
 		~App();
-
 		App(const App&) = delete;
 		App& operator=(const App&) = delete;
-	private:
+
 		QApplication* application_ = nullptr;
 		QString applicationName_;
 		bool initialized_ = false;
 
-		std::unique_ptr<CommandManager> m_commandManager;
-		std::unique_ptr<ToolManager> m_toolManager;
-		//DocumentManager& m_documentManager;
+		std::unique_ptr<EventBus>        m_eventBus;
+		std::unique_ptr<CommandManager>  m_commandManager;
+		std::unique_ptr<ToolManager>     m_toolManager;
 		std::unique_ptr<SelectionManager> m_selectionManager;
-		std::unique_ptr<ViewManager> m_viewManager;
+		std::unique_ptr<ViewManager>     m_viewManager;
+		std::unique_ptr<StatusService>   m_statusService;
 		CommandContext m_commandContext;
 	};
 

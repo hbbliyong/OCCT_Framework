@@ -1,4 +1,5 @@
 #include "view/View.h"
+#include "document/Document.h"
 
 static QCursor* defCursor = nullptr;
 static QCursor* handCursor = nullptr;
@@ -29,26 +30,28 @@ static QCursor* rotCursor = nullptr;
 #include <QMouseEvent>
 
 namespace SongYun {
-	View::View(bool theIs3dView, QWidget* theParent) : QOpenGLWidget(theParent),
-		myIs3dView(theIs3dView),
+	View::View(Document* doc, QWidget* parent)
+		: QOpenGLWidget(parent),
+		myIs3dView(true),
 		dpr(devicePixelRatioF()),
 		myIsRaytracing(false),
 		myIsShadowsEnabled(true),
 		myIsReflectionsEnabled(false),
-		myIsAntialiasingEnabled(false)
+		myIsAntialiasingEnabled(false),
+		m_doc(doc)
 	{
 		myCurrentMode = CurrentAction3d_Nothing;
 		setFocusPolicy(Qt::StrongFocus);
 		setMouseTracking(true);
 
 		setBackgroundRole(QPalette::NoRole);
-
 		setAttribute(Qt::WA_DontCreateNativeAncestors);
-		setFocusPolicy(Qt::StrongFocus);
 		setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
-
-		// ❗ 防止 Qt 重绘干扰 OCCT
 		setAttribute(Qt::WA_OpaquePaintEvent);
+
+		// 构造即绑定：注册为 Document 观察者
+		if (m_doc)
+			m_doc->addObserver(this);
 	}
 
 	void View::initializeGL()
@@ -731,4 +734,58 @@ namespace SongYun {
 		}
 
 	}
+
+	// ============================================================
+	// DocumentObserver 实现
+	// ============================================================
+
+	void View::onObjectAdded(int id, const TopoDS_Shape& /*shape*/)
+	{
+		if (!m_doc) return;
+		auto* labelPtr = static_cast<const TDF_Label*>(m_doc->labelById(id));
+		if (!labelPtr) return;
+
+		auto ais = new XCAFPrs_AISObject(*labelPtr);
+		m_context->Display(ais, Standard_True);
+		m_aisMap[id] = ais;
+	}
+
+	void View::onObjectRemoved(int id)
+	{
+		auto it = m_aisMap.find(id);
+		if (it != m_aisMap.end())
+		{
+			m_context->Remove(it->second, Standard_False);
+			m_context->UpdateCurrentViewer();
+			m_aisMap.erase(it);
+		}
+	}
+
+	// ============================================================
+	// 临时预览（不写入 Document）
+	// ============================================================
+
+	void View::showTemporaryShape(const TopoDS_Shape& shape)
+	{
+		clearTemporaryShape();
+		m_tempAIS = new AIS_Shape(shape);
+		m_context->Display(m_tempAIS, Standard_True);
+	}
+
+	void View::updateTemporaryShape(const TopoDS_Shape& shape)
+	{
+		clearTemporaryShape();
+		m_tempAIS = new AIS_Shape(shape);
+		m_context->Display(m_tempAIS, Standard_True);
+	}
+
+	void View::clearTemporaryShape()
+	{
+		if (!m_tempAIS.IsNull())
+		{
+			m_context->Remove(m_tempAIS, Standard_True);
+			m_tempAIS.Nullify();
+		}
+	}
+
 }

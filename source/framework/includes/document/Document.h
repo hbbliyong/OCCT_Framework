@@ -5,7 +5,12 @@
 #include <vector>
 #include <memory>
 #include <TopoDS_Shape.hxx>
+
 namespace SongYun {
+
+	class DocumentObserver;
+	class Transaction;
+
 	class Document
 	{
 	public:
@@ -18,17 +23,37 @@ namespace SongYun {
 		SONGYUN_API virtual bool load(const std::string& path);
 		SONGYUN_API virtual bool save(const std::string& path) const;
 
-		SONGYUN_API int addObject(const TopoDS_Shape& object);
-		SONGYUN_API  int createAssembly(const std::vector<int>& children);
-		SONGYUN_API void removeObject(const int id);
-		SONGYUN_API const std::vector<TopoDS_Shape>& objects() const noexcept;
+		/// 添加对象 → XCAF + 通知观察者 + 事务记录
+		SONGYUN_API int addObject(const TopoDS_Shape& shape);
+		/// 移除对象 → XCAF + 通知观察者
+		SONGYUN_API void removeObject(int id);
+		/// 根据 ID 获取 Label 指针（View 创建 AIS 用）
+		SONGYUN_API const void* labelById(int id) const;
+		/// 获取内部 XCAF ShapeTool
+		SONGYUN_API void* shapeTool() const;
+
+		SONGYUN_API int createAssembly(const std::vector<int>& children);
+
+		// 观察者
+		SONGYUN_API void addObserver(DocumentObserver* obs);
+		SONGYUN_API void removeObserver(DocumentObserver* obs);
+
+		// 事务
+		SONGYUN_API void setActiveTransaction(Transaction* txn);
+		SONGYUN_API Transaction* activeTransaction() const;
+
 	private:
 		bool createNew();
+		void notifyAdded(int id, const TopoDS_Shape& shape);
+		void notifyRemoved(int id);
+
 	private:
 		std::string name_;
-		std::vector<std::shared_ptr<TopoDS_Shape>> objects_;
+		std::vector<DocumentObserver*> m_observers;
+		Transaction* m_activeTxn = nullptr;
 
 		struct Impl;
 		std::unique_ptr<Impl> m_impl;
 	};
+
 } // namespace SongYun

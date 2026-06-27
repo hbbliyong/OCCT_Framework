@@ -1,4 +1,4 @@
-#include "cmds/CreatePolylineCommand.h"
+#include "cmds/DrawPolylineRubberCommand.h"
 
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
@@ -12,17 +12,21 @@
 
 namespace Samples
 {
-	bool CreatePolylineCommand::execute()
+	bool DrawPolylineRubberCommand::execute()
 	{
 		auto& docMgr = this->context().documentManager();
 		auto* view  = this->context().viewManager().activeView();
 		std::vector<gp_Pnt> points;
 
+		std::optional<gp_Pnt> prev;
 		while (true)
 		{
-			auto pt = this->context().selectionManager().PickPoint("Click vertex (right-click to finish)");
+			auto pt = this->context().selectionManager().PickPointWithRubber(
+				"Click vertex (right-click to finish)", prev);
 			if (!pt.has_value()) break;
+
 			points.push_back(*pt);
+			prev = *pt;
 
 			if (points.size() >= 2 && view)
 			{
@@ -48,10 +52,10 @@ namespace Samples
 			wm.Add(BRepBuilderAPI_MakeEdge(points[i - 1], points[i]));
 
 		docMgr.activeDocument()->addObject(wm.Shape());
-		this->context().statusService().showMessage("Polyline created.");
+		this->context().statusService().showMessage("Polyline created with rubber band.");
 		return true;
 	}
 
-	REGISTER_COMMAND(CreatePolylineCommand, "Samples.CreatePolyline");
+	REGISTER_COMMAND(DrawPolylineRubberCommand, "Samples.DrawPolylineRubber");
 
 } // namespace Samples

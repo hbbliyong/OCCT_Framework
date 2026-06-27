@@ -1,24 +1,38 @@
 #pragma once
 
 #include "core/CoreMacro.hpp"
-#include <QObject>
+#include <vector>
+#include <map>
+
+class QWidget;
 
 namespace SongYun {
 
 	class View;
+	class Document;
 
-	class ViewManager : public QObject
+	/// @brief 视图管理器 — 跟踪 View-Document 关系，生命周期由 Qt 父子链管理
+	class ViewManager
 	{
-		Q_OBJECT
-
 	public:
-		SONGYUN_API explicit ViewManager(QObject* parent = nullptr);
+		SONGYUN_API ViewManager() = default;
 
-		SONGYUN_API void setActiveView(View* view);
+		/// 创建视图（parent 由 Qt 管理生命周期）
+		SONGYUN_API View* createView(Document* doc, QWidget* parent = nullptr);
+
+		/// 关闭视图
+		SONGYUN_API void closeView(View* view);
+
 		SONGYUN_API View* activeView() const;
+		SONGYUN_API void setActiveView(View* view);
+
+		SONGYUN_API std::vector<View*> views(Document* doc) const;
+		SONGYUN_API std::vector<View*> allViews() const;
 
 	private:
-		View* activeView_ = nullptr;
+		View* m_activeView = nullptr;
+		std::vector<View*> m_views;
+		std::map<Document*, View*> m_docView;   // Document → View (一对一)
 	};
 
 } // namespace SongYun

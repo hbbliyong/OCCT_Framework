@@ -1,57 +1,32 @@
 #include "cmds/CreateCylinderCommand.h"
 
-#include <AIS_Shape.hxx>
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <gp_Ax2.hxx>
 #include <gp_Dir.hxx>
-#include <TopoDS_Shape.hxx>
-namespace Samples {
 
+#include "command/CommandContext.h"
+#include "selection/SelectionManager.h"
+#include "document/DocumentManager.h"
+#include "common/StatusService.h"
+
+namespace Samples
+{
 	bool CreateCylinderCommand::execute()
 	{
-		if (myExecuted)
+		auto pt = this->context().selectionManager().PickPoint("Click to place the cylinder center.");
+		if (!pt.has_value())
 		{
-			if (!myCylinder.IsNull())
-			{
-				myContext->Display(myCylinder, Standard_True);
-				if (myStatusCallback)
-					myStatusCallback("Cylinder created.");
-				return true;
-			}
+			this->context().statusService().showMessage("Cancelled.");
 			return false;
 		}
 
-		if (myStatusCallback)
-			myStatusCallback("Click in the view to place the cylinder center.");
+		auto shape = BRepPrimAPI_MakeCylinder(gp_Ax2(*pt, gp_Dir(0, 0, 1)), 20.0, 120.0).Shape();
+		this->context().documentManager().activeDocument()->addObject(shape);
+
+		this->context().statusService().showMessage("Cylinder created.");
 		return true;
 	}
 
-	bool CreateCylinderCommand::undo()
-	{
-		if (myCylinder.IsNull())
-			return false;
-
-		myContext->Remove(myCylinder, false);
-		myContext->UpdateCurrentViewer();
-		myCylinder.Nullify();
-
-		if (myStatusCallback)
-			myStatusCallback("Cylinder creation undone.");
-
-		return true;
-	}
-
-	void CreateCylinderCommand::onPickedPoint(const gp_Pnt& point)
-	{
-		myPickedPoint = point;
-		const TopoDS_Shape cylinder = BRepPrimAPI_MakeCylinder(gp_Ax2(point, gp_Dir(0, 0, 1)), 20.0, 120.0).Shape();
-		myCylinder = new AIS_Shape(cylinder);
-		myContext->Display(myCylinder, Standard_True);
-		myExecuted = true;
-
-		if (myStatusCallback)
-			myStatusCallback("Cylinder created.");
-	}
-	// 自动注册到系统（无需修改initPartModule）
 	REGISTER_COMMAND(CreateCylinderCommand, "Samples.CreateCylinder");
-}
+
+} // namespace Samples
