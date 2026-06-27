@@ -1,3 +1,6 @@
+# 第一行：兜底
+* text=auto
+
 .gitattributes eol=lf
 .gitignore  eol=lf
 *.txt       eol=lf
