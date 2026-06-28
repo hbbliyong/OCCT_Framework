@@ -1,37 +1,36 @@
 #include "ui/MainWindow/MainWindow.h"
+#include "ui/Ribbon/RibbonWidget.h"
+#include "ui/project/ProjectPanel.h"
 #include "view/View.h"
 #include "app/App.h"
 #include "selection/SelectionManager.h"
 #include "view/ViewManager.h"
-#include "document/DocumentManager.h"
 #include "common/EventBus.h"
 #include "common/StatusService.h"
-#include "command/ActionManager.h"
+#include "command/CommandManager.h"
 
 #include <QMenuBar>
 #include <QToolBar>
+#include <QVBoxLayout>
+#include <QDockWidget>
 #include <QEvent>
 #include <QStatusBar>
 #include <any>
 
 namespace SongYun {
 
-	MainWindow& MainWindow::Instance()
-	{
-		static MainWindow instance;
-		return instance;
-	}
-
-	QMenuBar* MainWindow::menuBar() const { return myMenuBar; }
-	QToolBar* MainWindow::toolBar() const { return myToolBar; }
+	QMenuBar* MainWindow::menuBar() const      { return m_menubar; }
+	QToolBar* MainWindow::toolBar() const      { return m_toolbar; }
 	ActionManager& MainWindow::actionManager() { return *m_actionManager; }
+	RibbonWidget* MainWindow::ribbon() const   { return m_ribbon; }
 
-	MainWindow::MainWindow(QWidget* parent)
+	MainWindow::MainWindow(Document* doc, QWidget* parent)
 		: QMainWindow(parent)
 	{
-		m_actionManager  = std::make_unique<ActionManager>(App::Instance().commandManager());
+		m_actionManager = std::make_unique<ActionManager>(App::Instance().commandManager());
 
-		initOCCTView();
+		initRibbon();
+		initOCCTView(doc);
 
 		App::Instance().eventBus().subscribe("status.message",
 			[this](const std::any& data)
@@ -44,36 +43,52 @@ namespace SongYun {
 		initStatusBar();
 		initConnections();
 		initToolBar();
+
+		// Project 树面板（绑定同一个 Document）
+		m_projectPanel = new ProjectPanel(this);
+		m_projectPanel->setDocument(doc);
+		m_projectPanel->setView(m_view);
+
+		auto* dock = new QDockWidget("Project", this);
+		dock->setWidget(m_projectPanel);
+		addDockWidget(Qt::LeftDockWidgetArea, dock);
 	}
 
-	void MainWindow::close() {}
+	void MainWindow::initRibbon() { m_ribbon = new RibbonWidget(this); }
 
-	void MainWindow::initOCCTView()
+	void MainWindow::initOCCTView(Document* doc)
 	{
-		auto doc = DocumentManager::Instance().createDocument("default");
-		view_occt = App::Instance().commandContext().viewManager().createView(doc.get(), this);
-		view_occt->installEventFilter(this);
-		setCentralWidget(view_occt);
+		auto* central = new QWidget(this);
+		auto* layout = new QVBoxLayout(central);
+		layout->setContentsMargins(0, 0, 0, 0);
+		layout->setSpacing(0);
+
+		layout->addWidget(m_ribbon);
+
+		m_toolbar = new QToolBar("Parameters", central);
+		m_toolbar->setMovable(false);
+		m_toolbar->setIconSize(QSize(16, 16));
+		m_toolbar->setMinimumHeight(32);
+		layout->addWidget(m_toolbar);
+
+		// View 构造时绑定 Document（一对一，不可更改）
+		m_view = App::Instance().commandContext().viewManager().createView(doc, central);
+		m_view->installEventFilter(this);
+		layout->addWidget(m_view, 1);
+
+		setCentralWidget(central);
+		App::Instance().commandManager().setParameterToolBar(m_toolbar);
 	}
 
 	void MainWindow::initMenuBar()
 	{
-		myMenuBar = new QMenuBar(this);
-		setMenuBar(myMenuBar);
+		m_menubar = new QMenuBar(this);
+		setMenuBar(m_menubar);
 	}
 
 	void MainWindow::initStatusBar() { statusBar()->showMessage("Ready"); }
-
-	bool MainWindow::eventFilter(QObject* obj, QEvent* event)
-	{
-		return QMainWindow::eventFilter(obj, event);
-	}
-
+	bool MainWindow::eventFilter(QObject* obj, QEvent* event) { return QMainWindow::eventFilter(obj, event); }
 	void MainWindow::initConnections() {}
-
-	void MainWindow::initToolBar()
-	{
-		myToolBar = addToolBar("Main Toolbar");
-	}
+	void MainWindow::initToolBar() {}
 
 } // namespace SongYun

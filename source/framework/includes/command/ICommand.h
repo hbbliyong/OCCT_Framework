@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/CoreMacro.hpp"
+#include "ui/command_ui/CommandUI.h"
 #include <QString>
 
 namespace SongYun {
@@ -12,10 +13,11 @@ namespace SongYun {
 	public:
 		virtual SONGYUN_API ~ICommand() = default;
 
-		/// 执行命令。首次调用做交互+构建，后续调用（redo）幂等恢复显示
 		virtual SONGYUN_API bool execute() = 0;
-
 		virtual SONGYUN_API QString name() const = 0;
+
+		/// 命令声明工具栏参数（默认空，子类可 override）
+		virtual SONGYUN_API void buildUI(CommandUI& ui) {}
 
 		void setContext(CommandContext* ctx) { m_context = ctx; }
 

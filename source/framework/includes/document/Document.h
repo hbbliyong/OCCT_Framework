@@ -32,6 +32,10 @@ namespace SongYun {
 		/// 获取内部 XCAF ShapeTool
 		SONGYUN_API void* shapeTool() const;
 
+		/// 对象遍历（ProjectModel 用）
+		SONGYUN_API int objectCount() const;
+		SONGYUN_API int objectIdAt(int index) const;
+
 		SONGYUN_API int createAssembly(const std::vector<int>& children);
 
 		// 观察者

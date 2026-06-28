@@ -1,9 +1,6 @@
 #pragma once
 
-class QMenuBar;
-class QToolBar;
-
-namespace SongYun { class ActionManager; }
+namespace SongYun { class MainWindow; }
 
 namespace Samples
 {
@@ -11,8 +8,7 @@ namespace Samples
 	{
 	public:
 		MenuBarSetup() = delete;
-		static void initialize(QMenuBar* menuBar, QToolBar* toolBar,
-							   SongYun::ActionManager& am);
+		static void initialize(SongYun::MainWindow& mainWindow);
 	};
 
 } // namespace Samples

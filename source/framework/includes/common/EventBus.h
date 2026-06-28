@@ -26,9 +26,9 @@ private:
         EventCallback callback;
     };
 
-    std::mutex mutex_;
-    std::map<std::string, std::vector<Subscriber>> subscribers_;
-    int nextId_ = 1;
+    std::mutex m_mutex;
+    std::map<std::string, std::vector<Subscriber>> m_subscribers;
+    int m_nextId = 1;
 };
 
 } // namespace SongYun

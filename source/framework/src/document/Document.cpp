@@ -88,6 +88,15 @@ namespace SongYun {
 
 	void* Document::shapeTool() const { return m_impl->shapeTool.operator->(); }
 
+	int Document::objectCount() const { return static_cast<int>(m_impl->idToLabel.size()); }
+	int Document::objectIdAt(int index) const
+	{
+		if (index < 0 || index >= static_cast<int>(m_impl->idToLabel.size())) return -1;
+		auto it = m_impl->idToLabel.begin();
+		std::advance(it, index);
+		return it->first;
+	}
+
 	int Document::createAssembly(const std::vector<int>& children)
 	{
 		TDF_Label assembly = m_impl->shapeTool->NewShape();

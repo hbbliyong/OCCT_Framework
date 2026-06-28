@@ -80,7 +80,7 @@ namespace SongYun {
 		void selectionChanged();
 
 	public:
-		/// 构造即绑定 Document（一对一），View 自动注册为 DocumentObserver
+		/// 构造即绑定 Document（一对一，不可更改），View 自动注册为 DocumentObserver
 		SONGYUN_API explicit View(Document* doc, QWidget* parent = nullptr);
 
 		/// 临时预览（不写入 Document，用于绘制过程反馈）
@@ -113,6 +113,11 @@ namespace SongYun {
 		{
 			return m_context;
 		}
+
+		/// 根据 Document 对象 ID 选中对应的 AISObject（树 → 视图联动）
+		SONGYUN_API void selectObjectById(int id);
+		/// 获取当前选中的对象 ID 列表（视图 → 树联动）
+		SONGYUN_API std::vector<int> selectedObjectIds() const;
 
 		/**
 		 * @brief 将屏幕点转化为at处的点
@@ -150,13 +155,13 @@ namespace SongYun {
 		/**
 		 * @brief 自适应所有AIS
 		 */
-		void fitAll();
-		void setAxo();
-		void setFront();
-		void setBack();
-		void setLeft();
-		void setRight();
-		void setTop();
+		SONGYUN_API void fitAll();
+		SONGYUN_API void setAxo();
+		SONGYUN_API void setFront();
+		SONGYUN_API void setBack();
+		SONGYUN_API void setLeft();
+		SONGYUN_API void setRight();
+		SONGYUN_API void setTop();
 		void setBottom();
 
 		void setShading();

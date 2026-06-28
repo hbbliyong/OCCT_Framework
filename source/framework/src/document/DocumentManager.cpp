@@ -1,4 +1,7 @@
 #include "document/DocumentManager.h"
+#include "document/ProjectManager.h"
+#include "document/Project.h"
+
 namespace SongYun {
 	DocumentManager& DocumentManager::Instance()
 	{
@@ -18,6 +21,9 @@ namespace SongYun {
 
 	std::shared_ptr<Document> DocumentManager::activeDocument() const
 	{
+		// 优先取 ProjectManager 的项目文档
+		if (auto* proj = ProjectManager::Instance().activeProject())
+			return std::shared_ptr<Document>(proj->document(), [](Document*){});
 		return m_activeDocument;
 	}
 

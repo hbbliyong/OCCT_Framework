@@ -761,6 +761,30 @@ namespace SongYun {
 		}
 	}
 
+	void View::selectObjectById(int id)
+	{
+		auto it = m_aisMap.find(id);
+		if (it == m_aisMap.end()) return;
+
+		m_context->ClearSelected(Standard_False);
+		m_context->SetSelected(it->second, Standard_True);
+		m_context->UpdateCurrentViewer();
+	}
+
+	std::vector<int> View::selectedObjectIds() const
+	{
+		std::vector<int> ids;
+		m_context->InitSelected();
+		while (m_context->MoreSelected())
+		{
+			auto ais = m_context->SelectedInteractive();
+			for (auto& [id, mapped] : m_aisMap)
+				if (mapped == ais) { ids.push_back(id); break; }
+			m_context->NextSelected();
+		}
+		return ids;
+	}
+
 	// ============================================================
 	// 临时预览（不写入 Document）
 	// ============================================================

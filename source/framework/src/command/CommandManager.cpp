@@ -3,8 +3,11 @@
 #include "command/Transaction.h"
 #include "document/Document.h"
 #include "document/DocumentManager.h"
+#include "document/ProjectManager.h"
+#include "document/Project.h"
 #include "app/App.h"
 #include <QEventLoop>
+#include <QToolBar>
 #include <iostream>
 
 namespace SongYun {
@@ -23,7 +26,33 @@ namespace SongYun {
 
 	Document* CommandManager::activeDocument() const
 	{
+		// 优先取 ProjectManager 的项目文档
+		auto* proj = ProjectManager::Instance().activeProject();
+		if (proj) return proj->document();
+		// 回退到旧的 DocumentManager
 		return DocumentManager::Instance().activeDocument().get();
+	}
+
+	void CommandManager::setParameterToolBar(QToolBar* toolbar) { m_paramToolbar = toolbar; }
+
+	void CommandManager::buildCommandUI(ICommand* command)
+	{
+		if (!m_paramToolbar) return;
+		CommandUI ui;
+		command->buildUI(ui);
+		auto* panel = m_builder.build(ui, m_paramToolbar);
+		if (panel) m_paramToolbar->addWidget(panel);
+	}
+
+	void CommandManager::clearCommandUI()
+	{
+		m_builder.clear();
+		if (m_paramToolbar)
+		{
+			// 移除除第一个持久 widget 外的所有内容
+			while (m_paramToolbar->actions().size() > 0)
+				m_paramToolbar->removeAction(m_paramToolbar->actions().last());
+		}
 	}
 
 	// ============================================================
@@ -43,6 +72,9 @@ namespace SongYun {
 		auto* doc = activeDocument();
 		if (!doc) { m_activeCommand = nullptr; return; }
 
+		// 0. 构建参数 UI
+		buildCommandUI(command);
+
 		// 1. 开启事务
 		auto txn = std::make_unique<Transaction>(doc);
 		doc->setActiveTransaction(txn.get());
@@ -59,6 +91,9 @@ namespace SongYun {
 			m_redoStack.clear();
 			m_undoStack.push_back(std::move(txn));
 		}
+
+		// 5. 清理参数 UI
+		clearCommandUI();
 
 		m_activeCommand = nullptr;
 		m_activeLoop = nullptr;

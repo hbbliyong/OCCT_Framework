@@ -1,25 +1,21 @@
 #include "ui/Ribbon/RibbonWidget.h"
-#include <QToolBar>
-#include <QVBoxLayout>
-#include <QAction>
+#include "ui/Ribbon/RibbonPageWidget.h"
+
 namespace SongYun
 {
 	RibbonWidget::RibbonWidget(QWidget* parent)
-		: QWidget(parent)
+		: QTabWidget(parent)
 	{
-		auto layout = new QVBoxLayout(this);
-		layout->setContentsMargins(0, 0, 0, 0);
-
-		toolbar_ = new QToolBar(this);
-		toolbar_->setMovable(false);
-		layout->addWidget(toolbar_);
+		setTabPosition(QTabWidget::North);
+		setDocumentMode(true);
 	}
 
-	QAction* RibbonWidget::addRibbonAction(const QString& text)
+	RibbonPageWidget* RibbonWidget::addPage(const QString& name)
 	{
-		if (!toolbar_)
-			return nullptr;
-
-		return toolbar_->addAction(text);
+		auto* page = new RibbonPageWidget(this);
+		addTab(page, name);
+		m_pages[name] = page;
+		return page;
 	}
-}
+
+} // namespace SongYun

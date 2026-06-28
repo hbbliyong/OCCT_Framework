@@ -1,26 +1,24 @@
 #pragma once
 
 #include "core/CoreMacro.hpp"
-#include <QWidget>
+#include <QTabWidget>
+#include <QMap>
 #include <QString>
-
-class QAction;
-class QToolBar;
 
 namespace SongYun {
 
-class RibbonWidget : public QWidget
-{
-    Q_OBJECT
+	class RibbonPageWidget;
 
-public:
-    SONGYUN_API explicit RibbonWidget(QWidget *parent = nullptr);
-    SONGYUN_API ~RibbonWidget() override = default;
+	class SONGYUN_API RibbonWidget : public QTabWidget
+	{
+		Q_OBJECT
+	public:
+		explicit RibbonWidget(QWidget* parent = nullptr);
 
-    SONGYUN_API QAction *addRibbonAction(const QString &text);
+		RibbonPageWidget* addPage(const QString& name);
 
-private:
-    QToolBar *toolbar_ = nullptr;
-};
+	private:
+		QMap<QString, RibbonPageWidget*> m_pages;
+	};
 
 } // namespace SongYun

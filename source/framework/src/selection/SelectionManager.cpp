@@ -77,7 +77,7 @@ namespace SongYun
 		ToolManager::Instance()
 			.SetCurrent(tool);
 
-		CommandManager::Instance().setActiveLoop(&loop);
+		App::Instance().commandManager().setActiveLoop(&loop);
 		loop.exec();
 
 		ToolManager::Instance()
@@ -140,7 +140,7 @@ namespace SongYun
 		ToolManager::Instance()
 			.SetCurrent(tool);
 
-		CommandManager::Instance().setActiveLoop(&loop);
+		App::Instance().commandManager().setActiveLoop(&loop);
 		loop.exec();
 
 		ToolManager::Instance()
