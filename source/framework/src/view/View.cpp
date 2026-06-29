@@ -1,5 +1,7 @@
 #include "view/View.h"
 #include "document/Document.h"
+#include "common/EventBus.h"
+#include "app/App.h"
 
 static QCursor* defCursor = nullptr;
 static QCursor* handCursor = nullptr;
@@ -730,7 +732,22 @@ namespace SongYun {
 		{
 			init();
 			m_ready = true;
-			emit viewReady();   // ⭐关键
+
+			// 订阅 Document ChangeSet（CadObject 变更）
+			App::Instance().eventBus().subscribe("document.changed",
+				[this](const std::any& data) {
+					auto* cs = std::any_cast<ChangeSet>(&data);
+					if (!cs || cs->empty()) return;
+					for (auto* o : cs->added)
+						addCadAIS(o);
+					for (auto* o : cs->modified)
+						updateCadAIS(o);
+					for (auto* o : cs->removed)
+						removeCadAIS(o);
+					m_context->UpdateCurrentViewer();
+				});
+
+			emit viewReady();
 		}
 
 	}
@@ -783,6 +800,60 @@ namespace SongYun {
 			m_context->NextSelected();
 		}
 		return ids;
+	}
+
+	// ============================================================
+	// CadObject AIS 管线（EventBus "document.changed" 驱动）
+	// ============================================================
+
+	void View::addCadAIS(CadObject* obj)
+	{
+		if (!obj || obj->shape().IsNull()) return;
+		auto ais = new AIS_Shape(obj->shape());
+		m_context->Display(ais, Standard_False);
+		m_cadAisMap[obj] = ais;
+	}
+
+	void View::updateCadAIS(CadObject* obj)
+	{
+		auto it = m_cadAisMap.find(obj);
+		if (it == m_cadAisMap.end()) { addCadAIS(obj); return; }
+		// 创建新的 AIS_Shape 替换
+		m_context->Remove(it->second, Standard_False);
+		auto ais = new AIS_Shape(obj->shape());
+		m_context->Display(ais, Standard_False);
+		it->second = ais;
+	}
+
+	void View::removeCadAIS(CadObject* obj)
+	{
+		auto it = m_cadAisMap.find(obj);
+		if (it == m_cadAisMap.end()) return;
+		m_context->Remove(it->second, Standard_False);
+		m_cadAisMap.erase(it);
+	}
+
+	void View::selectCadObject(CadObject* obj)
+	{
+		auto it = m_cadAisMap.find(obj);
+		if (it == m_cadAisMap.end()) return;
+		m_context->ClearSelected(Standard_False);
+		m_context->SetSelected(it->second, Standard_True);
+		m_context->UpdateCurrentViewer();
+	}
+
+	std::vector<CadObject*> View::selectedCadObjects() const
+	{
+		std::vector<CadObject*> result;
+		m_context->InitSelected();
+		while (m_context->MoreSelected())
+		{
+			auto ais = m_context->SelectedInteractive();
+			for (auto& [obj, mapped] : m_cadAisMap)
+				if (mapped == ais) { result.push_back(obj); break; }
+			m_context->NextSelected();
+		}
+		return result;
 	}
 
 	// ============================================================

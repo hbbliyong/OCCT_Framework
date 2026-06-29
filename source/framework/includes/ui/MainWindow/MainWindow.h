@@ -9,6 +9,7 @@
 
 class QMenuBar;
 class QToolBar;
+class QVBoxLayout;
 
 namespace SongYun {
 
@@ -21,7 +22,6 @@ namespace SongYun {
 		Q_OBJECT
 
 	public:
-		/// 构造时绑定 Document（一对一，不可更改）
 		SONGYUN_API explicit MainWindow(Document* doc, QWidget* parent = nullptr);
 		~MainWindow() = default;
 
@@ -29,6 +29,9 @@ namespace SongYun {
 		SONGYUN_API QToolBar*      toolBar() const;
 		SONGYUN_API ActionManager& actionManager();
 		SONGYUN_API RibbonWidget*  ribbon() const;
+
+		/// 切换到新 Document（创建新 View，替换旧 View）
+		SONGYUN_API void newDocument(Document* doc);
 
 	private:
 		void initOCCTView(Document* doc);
@@ -45,6 +48,7 @@ namespace SongYun {
 		QMenuBar*      m_menubar      = nullptr;
 		QToolBar*      m_toolbar      = nullptr;
 		View*          m_view         = nullptr;
+		QVBoxLayout*   m_viewLayout   = nullptr;  // central widget 的 layout
 	};
 
 } // namespace SongYun

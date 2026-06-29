@@ -1,21 +1,21 @@
 #include "cmds/CreatePolylineCommand.h"
 
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeWire.hxx>
+#include "entity/syPolyline.h"
 
 #include "command/CommandContext.h"
 #include "selection/SelectionManager.h"
 #include "view/ViewManager.h"
 #include "view/View.h"
 #include "document/DocumentManager.h"
+#include "document/Document.h"
 #include "common/StatusService.h"
 
 namespace Samples
 {
 	bool CreatePolylineCommand::execute()
 	{
-		auto& docMgr = this->context().documentManager();
-		auto* view  = this->context().viewManager().activeView();
+		auto* doc  = this->context().documentManager().activeDocument().get();
+		auto* view = this->context().viewManager().activeView();
 		std::vector<gp_Pnt> points;
 
 		while (true)
@@ -43,11 +43,11 @@ namespace Samples
 			return false;
 		}
 
-		BRepBuilderAPI_MakeWire wm;
-		for (size_t i = 1; i < points.size(); ++i)
-			wm.Add(BRepBuilderAPI_MakeEdge(points[i - 1], points[i]));
+		auto poly = std::make_shared<SongYun::SyPolyline>();
+		for (auto& p : points) poly->addPoint(p);
+		doc->addCadObject(poly);
+		doc->commit();
 
-		docMgr.activeDocument()->addObject(wm.Shape());
 		this->context().statusService().showMessage("Polyline created.");
 		return true;
 	}

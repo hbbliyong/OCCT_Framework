@@ -3,6 +3,7 @@
 #include "core/CoreMacro.hpp"
 #include "occ/OcctWindow.h"
 #include "document/DocumentObserver.h"
+#include "entity/cadObject.h"
 
 #include <QOpenGLWidget>
 #include <QMouseEvent>
@@ -118,6 +119,13 @@ namespace SongYun {
 		SONGYUN_API void selectObjectById(int id);
 		/// 获取当前选中的对象 ID 列表（视图 → 树联动）
 		SONGYUN_API std::vector<int> selectedObjectIds() const;
+
+		// CadObject AIS 管线（EventBus 驱动）
+		SONGYUN_API void addCadAIS(CadObject* obj);
+		SONGYUN_API void updateCadAIS(CadObject* obj);
+		SONGYUN_API void removeCadAIS(CadObject* obj);
+		SONGYUN_API void selectCadObject(CadObject* obj);
+		SONGYUN_API std::vector<CadObject*> selectedCadObjects() const;
 
 		/**
 		 * @brief 将屏幕点转化为at处的点
@@ -245,6 +253,7 @@ namespace SongYun {
 
 		Document* m_doc = nullptr;
 		std::map<int, Handle(AIS_InteractiveObject)> m_aisMap;
+		std::map<CadObject*, Handle(AIS_Shape)> m_cadAisMap;  // CadObject → AIS
 		Handle(AIS_Shape) m_tempAIS;   // 临时预览（不关联 Document）
 
 		bool m_windowBound = false;

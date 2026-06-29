@@ -2,7 +2,6 @@
 
 #include "command/ICommand.h"
 #include "command/CommandMacros.h"
-#include <gp_Circ.hxx>
 
 namespace Samples
 {
@@ -23,7 +22,6 @@ namespace Samples
 		bool executeCenterRadius();
 		bool executeTwoPoints();
 		bool executeThreePoints();
-		void showCirclePreview(const gp_Circ& circle);
 
 		Options m_opts;
 	};

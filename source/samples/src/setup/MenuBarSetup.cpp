@@ -8,26 +8,32 @@
 #include "command/CommandManager.h"
 #include "command/CommandRegistry.h"
 #include "cmds/SetViewCommand.h"
+#include "document/ProjectManager.h"
+#include "document/Project.h"
+#include "document/Document.h"
 #include "app/App.h"
 
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
 #include <QPushButton>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QApplication>
 
 namespace Samples
 {
 	static void registerViewCommands()
 	{
-		SongYun::CommandRegistry::Instance().registerDescriptor(
-			"Samples.View3D", [] { return new SetViewCommand(SetViewCommand::Axo); });
-		SongYun::CommandRegistry::Instance().registerDescriptor(
-			"Samples.ViewXOY", [] { return new SetViewCommand(SetViewCommand::Top); });
-		SongYun::CommandRegistry::Instance().registerDescriptor(
-			"Samples.ViewXOZ", [] { return new SetViewCommand(SetViewCommand::Front); });
-		SongYun::CommandRegistry::Instance().registerDescriptor(
-			"Samples.ViewYOZ", [] { return new SetViewCommand(SetViewCommand::Left); });
+		auto& reg = SongYun::CommandRegistry::Instance();
+		reg.registerDescriptor("Samples.View3D",  [] { return new SetViewCommand(SetViewCommand::Axo); });
+		reg.registerDescriptor("Samples.ViewXOY", [] { return new SetViewCommand(SetViewCommand::Top); });
+		reg.registerDescriptor("Samples.ViewXOZ", [] { return new SetViewCommand(SetViewCommand::Front); });
+		reg.registerDescriptor("Samples.ViewYOZ", [] { return new SetViewCommand(SetViewCommand::Left); });
 	}
+
+	// 当前文档路径（简单静态存储）
+	static QString s_currentFilePath;
 
 	void MenuBarSetup::initialize(SongYun::MainWindow& mainWindow)
 	{
@@ -36,55 +42,33 @@ namespace Samples
 		auto& am = mainWindow.actionManager();
 		auto* ribbon = mainWindow.ribbon();
 
-		// ========== Ribbon ==========
+		// ========== Ribbon（不变）==========
 		SongYun::RibbonModel model;
 
 		model.addPage({
 			"Home",
 			{
-				{ "Primitive",
-					{ { "Cylinder", "Samples.CreateCylinder" } }
-				},
-				{ "Modify",
-					{
-						{ "Build (Fuse)",      "Samples.PickBuild" },
-						{ "Rubber Poly",       "Samples.DrawPolylineRubber" },
-						{ "Triangulate Poly",  "Samples.TriangulatePolyline" },
-					}
-				},
+				{ "Primitive",   { { "Cylinder", "Samples.CreateCylinder" } } },
+				{ "Modify",      {
+					{ "Build (Fuse)",      "Samples.PickBuild" },
+					{ "Rubber Poly",       "Samples.DrawPolylineRubber" },
+					{ "Triangulate Poly",  "Samples.TriangulatePolyline" },
+				}},
 			}
 		});
-
 		model.addPage({
 			"Draw",
 			{
-				{ "Curve",
-					{
-						{ "Line",       "Samples.DrawLine" },
-						{ "Arc",        "Samples.DrawArc" },
-						{ "Circle",     "Samples.DrawCircle" },
-					}
-				},
-				{ "Polyline",
-					{
-						{ "Polyline",        "Samples.CreatePolyline" },
-						{ "Rubber Polyline", "Samples.DrawPolylineRubber" },
-					}
-				},
+				{ "Curve",       { {"Line","Samples.DrawLine"}, {"Arc","Samples.DrawArc"}, {"Circle","Samples.DrawCircle"} } },
+				{ "Polyline",    { {"Polyline","Samples.CreatePolyline"}, {"Rubber Polyline","Samples.DrawPolylineRubber"} } },
 			}
 		});
-
 		model.addPage({
 			"View",
 			{
-				{ "Orientation",
-					{
-						{ "3D",   "Samples.View3D" },
-						{ "XOY",  "Samples.ViewXOY" },
-						{ "XOZ",  "Samples.ViewXOZ" },
-						{ "YOZ",  "Samples.ViewYOZ" },
-					}
-				},
+				{ "Orientation", {
+					{"3D","Samples.View3D"}, {"XOY","Samples.ViewXOY"}, {"XOZ","Samples.ViewXOZ"}, {"YOZ","Samples.ViewYOZ"}
+				}},
 			}
 		});
 
@@ -103,21 +87,84 @@ namespace Samples
 		editGroup->contentLayout()->addWidget(redoBtn);
 
 		// ========== 菜单栏 ==========
-		QMenu* fileMenu = mainWindow.menuBar()->addMenu("File");
-		fileMenu->addAction(am.createCommandAction({ "Samples.CreateCylinder", "Cylinder" }));
-		fileMenu->addAction(am.createCommandAction({ "Samples.PickBuild", "Build (Fuse)" }));
+		auto* menu = mainWindow.menuBar();
+		QMenu* fileMenu = menu->addMenu("File");
+
+		// New — 新 Project → 新 Document → 新 View
+		QAction* newAction = fileMenu->addAction("New");
+		QObject::connect(newAction, &QAction::triggered, [&mainWindow]() {
+			auto* proj = SongYun::ProjectManager::Instance().createProject("NewProject");
+			mainWindow.newDocument(proj->document());
+			s_currentFilePath.clear();
+		});
+
+		// Open
+		QAction* openAction = fileMenu->addAction("Open");
+		QObject::connect(openAction, &QAction::triggered, [&mainWindow]() {
+			QString path = QFileDialog::getOpenFileName(nullptr, "Open", "",
+				"OCCT Files (*.brep *.step *.stp *.iges *.igs);;All Files (*)");
+			if (path.isEmpty()) return;
+
+			auto* proj = SongYun::ProjectManager::Instance().createProject("Opened");
+			if (proj->document()->load(path.toStdString()))
+			{
+				proj->document()->loadPropertiesFromTDF();
+				mainWindow.newDocument(proj->document());
+				s_currentFilePath = path;
+			}
+			else
+			{
+				QMessageBox::warning(nullptr, "Error", "Failed to open file.");
+			}
+		});
+
 		fileMenu->addSeparator();
-		fileMenu->addAction(am.createCommandAction({ "Samples.DrawLine", "Line" }));
-		fileMenu->addAction(am.createCommandAction({ "Samples.DrawArc", "Arc" }));
-		fileMenu->addAction(am.createCommandAction({ "Samples.DrawCircle", "Circle" }));
+
+		// Save
+		QAction* saveAction = fileMenu->addAction("Save");
+		QObject::connect(saveAction, &QAction::triggered, []() {
+			auto* proj = SongYun::ProjectManager::Instance().activeProject();
+			if (!proj) return;
+
+			auto* doc = proj->document();
+			if (s_currentFilePath.isEmpty())
+			{
+				QString path = QFileDialog::getSaveFileName(nullptr, "Save As", "",
+					"BREP Files (*.brep);;All Files (*)");
+				if (path.isEmpty()) return;
+				s_currentFilePath = path;
+			}
+
+			doc->savePropertiesToTDF();
+			if (!doc->save(s_currentFilePath.toStdString()))
+				QMessageBox::warning(nullptr, "Error", "Failed to save file.");
+		});
+
+		// Save As
+		QAction* saveAsAction = fileMenu->addAction("Save As...");
+		QObject::connect(saveAsAction, &QAction::triggered, []() {
+			auto* proj = SongYun::ProjectManager::Instance().activeProject();
+			if (!proj) return;
+
+			QString path = QFileDialog::getSaveFileName(nullptr, "Save As", "",
+				"BREP Files (*.brep);;All Files (*)");
+			if (path.isEmpty()) return;
+
+			auto* doc = proj->document();
+			doc->savePropertiesToTDF();
+			if (doc->save(path.toStdString()))
+				s_currentFilePath = path;
+			else
+				QMessageBox::warning(nullptr, "Error", "Failed to save file.");
+		});
+
 		fileMenu->addSeparator();
-		fileMenu->addAction(am.createCommandAction({ "Samples.CreatePolyline", "Polyline" }));
-		fileMenu->addAction(am.createCommandAction({ "Samples.DrawPolylineRubber", "Rubber Polyline" }));
-		fileMenu->addSeparator();
-		fileMenu->addAction(am.createCommandAction({ "Samples.View3D", "3D View" }));
-		fileMenu->addAction(am.createCommandAction({ "Samples.ViewXOY", "XOY View" }));
-		fileMenu->addAction(am.createCommandAction({ "Samples.ViewXOZ", "XOZ View" }));
-		fileMenu->addAction(am.createCommandAction({ "Samples.ViewYOZ", "YOZ View" }));
+
+		// Exit
+		QAction* exitAction = fileMenu->addAction("Exit");
+		QObject::connect(exitAction, &QAction::triggered, []() {
+			QApplication::quit();
+		});
 	}
 
 } // namespace Samples

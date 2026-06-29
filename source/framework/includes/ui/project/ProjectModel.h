@@ -7,6 +7,7 @@
 namespace SongYun {
 
 	class Document;
+	class CadObject;
 
 	class ProjectModel : public QAbstractItemModel
 	{
@@ -22,10 +23,9 @@ namespace SongYun {
 		QVariant data(const QModelIndex& index, int role) const override;
 		QVariant headerData(int section, Qt::Orientation, int role) const override;
 
-		SONGYUN_API void setActiveDocument(Document* doc);
 		SONGYUN_API void refresh();
-		SONGYUN_API QModelIndex indexById(int objectId) const;
-		SONGYUN_API int objectIdAt(const QModelIndex& index) const;
+		SONGYUN_API QModelIndex indexOf(CadObject* obj) const;
+		SONGYUN_API CadObject* objectAt(const QModelIndex& index) const;
 
 	private:
 		Document* m_doc = nullptr;

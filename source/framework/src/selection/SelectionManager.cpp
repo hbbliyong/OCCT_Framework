@@ -7,7 +7,6 @@
 #include "command/CommandManager.h"
 #include "common/StatusService.h"
 #include "app/App.h"
-#include <stdexcept>
 
 namespace SongYun
 {
@@ -37,54 +36,33 @@ namespace SongYun
 	{
 		if (m_state != SelectionState::Idle)
 		{
-			throw std::runtime_error(
-				"Selection already active.");
+			// 非抛异常：安全返回 nullopt（上一轮可能未正确清理）
+			m_state = SelectionState::Idle;
+			return std::nullopt;
 		}
 
 		if (!m_view)
-		{
-			throw std::runtime_error(
-				"No active view.");
-		}
+			return std::nullopt;
 
-		m_state =
-			SelectionState::PickingPoint;
+		m_state = SelectionState::PickingPoint;
 
 		App::Instance().statusService().showMessage(prompt);
 
 		QEventLoop loop;
-
 		std::optional<gp_Pnt> result;
 
-		auto tool =
-			std::make_shared<
-			PickPointTool>(m_view);
+		auto tool = std::make_shared<PickPointTool>(m_view);
 
-		tool->OnPicked =
-			[&](const gp_Pnt& pt)
-			{
-				result = pt;
-				loop.quit();
-			};
+		tool->OnPicked = [&](const gp_Pnt& pt) { result = pt; loop.quit(); };
+		tool->OnCancelled = [&]() { result.reset(); loop.quit(); };
 
-		tool->OnCancelled =
-			[&]()
-			{
-				result.reset();
-				loop.quit();
-			};
-
-		ToolManager::Instance()
-			.SetCurrent(tool);
+		ToolManager::Instance().SetCurrent(tool);
 
 		App::Instance().commandManager().setActiveLoop(&loop);
 		loop.exec();
 
-		ToolManager::Instance()
-			.SetCurrent(nullptr);
-
-		m_state =
-			SelectionState::Idle;
+		ToolManager::Instance().SetCurrent(nullptr);
+		m_state = SelectionState::Idle;
 
 		return result;
 	}
@@ -96,58 +74,35 @@ namespace SongYun
 	{
 		if (m_state != SelectionState::Idle)
 		{
-			throw std::runtime_error(
-				"Selection already active.");
+			m_state = SelectionState::Idle;
+			return std::nullopt;
 		}
 
 		if (!m_view)
-		{
-			throw std::runtime_error(
-				"No active view.");
-		}
+			return std::nullopt;
 
-		m_state =
-			SelectionState::PickingPointWithRubber;
+		m_state = SelectionState::PickingPointWithRubber;
 
 		App::Instance().statusService().showMessage(prompt);
 
 		QEventLoop loop;
 		std::optional<gp_Pnt> result;
 
-		auto tool =
-			std::make_shared<PickPointRubberTool>(m_view);
+		auto tool = std::make_shared<PickPointRubberTool>(m_view);
 
-		// 如果提供了锚点，设置橡皮线起点
 		if (anchor.has_value())
-		{
 			tool->SetAnchorPoint(anchor.value());
-		}
 
-		tool->OnPicked =
-			[&](const gp_Pnt& pt)
-			{
-				result = pt;
-				loop.quit();
-			};
+		tool->OnPicked = [&](const gp_Pnt& pt) { result = pt; loop.quit(); };
+		tool->OnCancelled = [&]() { result.reset(); loop.quit(); };
 
-		tool->OnCancelled =
-			[&]()
-			{
-				result.reset();
-				loop.quit();
-			};
-
-		ToolManager::Instance()
-			.SetCurrent(tool);
+		ToolManager::Instance().SetCurrent(tool);
 
 		App::Instance().commandManager().setActiveLoop(&loop);
 		loop.exec();
 
-		ToolManager::Instance()
-			.SetCurrent(nullptr);
-
-		m_state =
-			SelectionState::Idle;
+		ToolManager::Instance().SetCurrent(nullptr);
+		m_state = SelectionState::Idle;
 
 		return result;
 	}
@@ -159,57 +114,35 @@ namespace SongYun
 	{
 		if (m_state != SelectionState::Idle)
 		{
-			throw std::runtime_error(
-				"Selection already active.");
+			m_state = SelectionState::Idle;
+			return std::nullopt;
 		}
 
 		if (!m_view)
-		{
-			throw std::runtime_error(
-				"No active view.");
-		}
+			return std::nullopt;
 
-		m_state =
-			SelectionState::PickingObject;
+		m_state = SelectionState::PickingObject;
 
 		App::Instance().statusService().showMessage(prompt);
 
 		QEventLoop loop;
 		std::optional<PickResult> result;
 
-		auto tool =
-			std::make_shared<PickObjectTool>(m_view);
+		auto tool = std::make_shared<PickObjectTool>(m_view);
 
 		if (filter)
-		{
 			tool->SetFilter(filter);
-		}
 
-		tool->OnPicked =
-			[&](const PickResult& pr)
-			{
-				result = pr;
-				loop.quit();
-			};
+		tool->OnPicked = [&](const PickResult& pr) { result = pr; loop.quit(); };
+		tool->OnCancelled = [&]() { result.reset(); loop.quit(); };
 
-		tool->OnCancelled =
-			[&]()
-			{
-				result.reset();
-				loop.quit();
-			};
+		ToolManager::Instance().SetCurrent(tool);
 
-		ToolManager::Instance()
-			.SetCurrent(tool);
-
-		CommandManager::Instance().setActiveLoop(&loop);
+		App::Instance().commandManager().setActiveLoop(&loop);
 		loop.exec();
 
-		ToolManager::Instance()
-			.SetCurrent(nullptr);
-
-		m_state =
-			SelectionState::Idle;
+		ToolManager::Instance().SetCurrent(nullptr);
+		m_state = SelectionState::Idle;
 
 		return result;
 	}

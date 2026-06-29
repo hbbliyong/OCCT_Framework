@@ -1,5 +1,7 @@
 #include "cmds/DrawPolylineRubberCommand.h"
 
+#include "entity/syPolyline.h"
+
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 
@@ -8,6 +10,7 @@
 #include "view/ViewManager.h"
 #include "view/View.h"
 #include "document/DocumentManager.h"
+#include "document/Document.h"
 #include "common/StatusService.h"
 
 namespace Samples
@@ -22,11 +25,9 @@ namespace Samples
 
 	bool DrawPolylineRubberCommand::execute()
 	{
-		auto& docMgr = this->context().documentManager();
-		auto* view  = this->context().viewManager().activeView();
+		auto* doc  = this->context().documentManager().activeDocument().get();
+		auto* view = this->context().viewManager().activeView();
 		std::vector<gp_Pnt> points;
-
-		this->context().statusService().showMessage("Left-click to add vertex (rubber-band preview), right-click/Esc to finish.");
 
 		std::optional<gp_Pnt> prev;
 		while (true)
@@ -60,13 +61,12 @@ namespace Samples
 			return false;
 		}
 
-		BRepBuilderAPI_MakeWire wm;
-		for (size_t i = 1; i < points.size(); ++i)
-			wm.Add(BRepBuilderAPI_MakeEdge(points[i - 1], points[i]));
-		if (m_opts.closed && points.size() >= 3)
-			wm.Add(BRepBuilderAPI_MakeEdge(points.back(), points.front()));
+		auto poly = std::make_shared<SongYun::SyPolyline>();
+		for (auto& p : points) poly->addPoint(p);
+		poly->closed.set(m_opts.closed);
+		doc->addCadObject(poly);
+		doc->commit();
 
-		docMgr.activeDocument()->addObject(wm.Shape());
 		this->context().statusService().showMessage("Polyline created with rubber band.");
 		return true;
 	}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/CoreMacro.hpp"
+#include "entity/cadObject.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -19,30 +20,34 @@ namespace SongYun {
 
 		SONGYUN_API const std::string& name() const noexcept;
 		SONGYUN_API void setName(const std::string& name);
-
 		SONGYUN_API virtual bool load(const std::string& path);
 		SONGYUN_API virtual bool save(const std::string& path) const;
 
-		/// 添加对象 → XCAF + 通知观察者 + 事务记录
+		// ---- 原始形状 ----
 		SONGYUN_API int addObject(const TopoDS_Shape& shape);
-		/// 移除对象 → XCAF + 通知观察者
 		SONGYUN_API void removeObject(int id);
-		/// 根据 ID 获取 Label 指针（View 创建 AIS 用）
 		SONGYUN_API const void* labelById(int id) const;
-		/// 获取内部 XCAF ShapeTool
 		SONGYUN_API void* shapeTool() const;
-
-		/// 对象遍历（ProjectModel 用）
 		SONGYUN_API int objectCount() const;
 		SONGYUN_API int objectIdAt(int index) const;
 
-		SONGYUN_API int createAssembly(const std::vector<int>& children);
+		// ---- CadObject（参数化、通用） ----
+		/// 仅记录，不 recompute；挂载 onDirty 回调
+		SONGYUN_API void addCadObject(std::shared_ptr<CadObject> obj);
+		/// 批量 recompute 所有脏对象 → 构建 ChangeSet → EventBus 发布
+		SONGYUN_API void commit();
+		SONGYUN_API const std::vector<std::shared_ptr<CadObject>>& cadObjects() const;
+		SONGYUN_API int cadObjCount() const;
+		SONGYUN_API CadObject* cadObjAt(int index) const;
+		SONGYUN_API int cadObjIndex(CadObject* obj) const;
 
-		// 观察者
+		// ---- TDF 属性存储（通用，委托给 CadObject 子类） ----
+		SONGYUN_API void savePropertiesToTDF() const;
+		SONGYUN_API void loadPropertiesFromTDF();
+
+		// ---- 观察者 / 事务 ----
 		SONGYUN_API void addObserver(DocumentObserver* obs);
 		SONGYUN_API void removeObserver(DocumentObserver* obs);
-
-		// 事务
 		SONGYUN_API void setActiveTransaction(Transaction* txn);
 		SONGYUN_API Transaction* activeTransaction() const;
 
@@ -52,9 +57,12 @@ namespace SongYun {
 		void notifyRemoved(int id);
 
 	private:
-		std::string name_;
+		std::string m_name;
 		std::vector<DocumentObserver*> m_observers;
 		Transaction* m_activeTxn = nullptr;
+
+		std::vector<std::shared_ptr<CadObject>> m_cadObjects;
+		std::vector<CadObject*>                 m_dirtyCadObjects;
 
 		struct Impl;
 		std::unique_ptr<Impl> m_impl;
